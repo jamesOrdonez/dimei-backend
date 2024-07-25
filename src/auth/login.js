@@ -24,7 +24,7 @@ async function login(req, res){
             const validatePass = await bcrypt.compare(password, passwordEncripted);
 
             if(!validatePass){
-                res.status(httpStatus.BAD_REQUEST).json({
+                res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
                     message: "Contraseña incorrecta"
                 })
             }else{

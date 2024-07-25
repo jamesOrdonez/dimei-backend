@@ -2,7 +2,7 @@ const conection = require("../db/conection");
 const httpStatus = require("http-status");
 const Module = "item_group";
 
-async function saveProduct(req, res) {
+async function saveItem(req, res) {
     try {
         const { name, state } = req.body;
 
@@ -42,6 +42,6 @@ async function getItemGroup(req, res){
 }
 
 module.exports = {
-    saveProduct,
+    saveItem,
     getItemGroup
 }
