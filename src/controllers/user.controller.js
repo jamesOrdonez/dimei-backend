@@ -71,8 +71,29 @@ async function updateuser(req, res) {
   }
 }
 
+async function deleteUser(req, res){
+  try {
+    const id = req.params.id;
+    const deleteUser = await conection.execute(`DELETE FROM user WHERE id = ?`,[id]);
+
+    if(deleteUser){
+      res.status(httpStatus.OK).json({
+        message: "Usuario eliminado.",
+        module: Module,
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: `Error interno en el servidor: ${error}`,
+      module: Module,
+    });
+  }
+}
+
 module.exports = {
   saveUser,
   getUser,
-  updateuser
+  updateuser,
+  deleteUser
 };

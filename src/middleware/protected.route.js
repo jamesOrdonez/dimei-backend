@@ -44,7 +44,7 @@ const protectedRoute = (options) => {
       }
 
       //? Asignar los resultados de las consultas en arrays
-      const permissGranted = permiss[0];  // Suponiendo que el resultado es un array de arrays
+      const permissGranted = permiss[0];
       const modulesWithpermiss = {};
 
       //? Organiza los módulos con sus respectivos permisos

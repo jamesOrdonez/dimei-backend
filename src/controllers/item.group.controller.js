@@ -7,26 +7,26 @@ async function saveItem(req, res) {
         const { name, state } = req.body;
 
         const item_group = await conection.execute(`INSERT INTO item_group (name, state) VALUE (?, ?)`, [name, state]);
-        if(item_group){
+        if (item_group) {
             res.status(httpStatus.CREATED).json({
-                message:"Registro guardado",
+                message: "Registro guardado",
                 module: Module
             })
         }
     } catch (error) {
         console.error(error);
         res.status
-        (httpStatus.INTERNAL_SERVER_ERROR).json({
-            message: `Error interno en el servidor: ${error}`,
-            module: Module
-        })
+            (httpStatus.INTERNAL_SERVER_ERROR).json({
+                message: `Error interno en el servidor: ${error}`,
+                module: Module
+            })
     }
 };
 
-async function getItemGroup(req, res){
+async function getItemGroup(req, res) {
     try {
         const query = await conection.execute('SELECT * FROM item_group ORDER BY 1 DESC');
-        if(query){
+        if (query) {
             res.status(httpStatus.OK).json({
                 data: query[0],
                 module: Module
@@ -41,7 +41,7 @@ async function getItemGroup(req, res){
     }
 }
 
-async function getOneItemGroup(req, res){
+async function getOneItemGroup(req, res) {
     try {
         const name = req.body.name;
         const itemGroup = await conection.execute(`SELECT * FROM item_group WHERE name LIKE ?`, [`%${name}%`]);
@@ -65,13 +65,13 @@ async function getOneItemGroup(req, res){
     }
 }
 
-async function updateItemGroup(req, res){
+async function updateItemGroup(req, res) {
     try {
         const { name, state } = req.body;
         const id = req.params.id;
 
-        const update = conection.execute(`UPDATE item_group SET name=?, state=? WHERE id=?`,[name, state, id]);
-        if(update){
+        const update = conection.execute(`UPDATE item_group SET name=?, state=? WHERE id=?`, [name, state, id]);
+        if (update) {
             res.status(httpStatus.OK).json({
                 message: 'registro actualizado',
                 module: Module
@@ -86,13 +86,13 @@ async function updateItemGroup(req, res){
     }
 }
 
-async function deleteItemGroup(req,res){
+async function deleteItemGroup(req, res) {
     try {
         const id = req.params.id;
 
-        const deleteItem = conection.execute(`DELETE FROM item_group WHERE id=?`,[id]);
+        const deleteItem = conection.execute(`DELETE FROM item_group WHERE id=?`, [id]);
 
-        if(deleteItem){
+        if (deleteItem) {
             res.status(httpStatus.OK).json({
                 message: 'Registro eliminado.',
                 module: Module
