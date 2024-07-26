@@ -47,7 +47,7 @@ async function getOneItem(req, res) {
         console.log(item);
         if (item[0].length > 0) {
             res.status(httpStatus.OK).json({
-                item: item[0],
+                data: item[0],
                 module: Module
             });
         } else {
