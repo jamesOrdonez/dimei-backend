@@ -44,6 +44,27 @@ async function getUser(req, res) {
       module: Module,
     });
   }
+};
+
+async function getOneUser(req, res){
+  try {
+    const id = req.params.id;
+
+    const oneUser = await conection.execute(`SELECT * FROM user WHERE id = ?`,[id]);
+
+    if(oneUser){
+      res.status(httpStatus.OK).json({
+        data: oneUser,
+        module: Module
+      })
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: `Error interno en el servidor: ${error}`,
+      module: Module,
+    });
+  }
 }
 
 async function updateuser(req, res) {
@@ -94,6 +115,7 @@ async function deleteUser(req, res){
 module.exports = {
   saveUser,
   getUser,
+  getOneUser,
   updateuser,
   deleteUser
 };

@@ -42,12 +42,11 @@ async function getItems(req, res) {
 
 async function getOneItem(req, res) {
     try {
-        const description = req.body.description;
-        const item = await conection.execute(`SELECT * FROM item WHERE description LIKE ?`, [`%${description}%`]);
-        console.log(item);
-        if (item[0].length > 0) {
+        const id = req.params.id;
+        const item = await conection.execute(`SELECT * FROM item WHERE id = ?`, [id]);
+        if (item.length > 0) {
             res.status(httpStatus.OK).json({
-                data: item[0],
+                data: item,
                 module: Module
             });
         } else {

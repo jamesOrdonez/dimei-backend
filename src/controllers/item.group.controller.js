@@ -43,11 +43,11 @@ async function getItemGroup(req, res) {
 
 async function getOneItemGroup(req, res) {
     try {
-        const name = req.body.name;
-        const itemGroup = await conection.execute(`SELECT * FROM item_group WHERE name LIKE ?`, [`%${name}%`]);
-        if (itemGroup[0].length > 0) {
+        const id = req.params.id;
+        const itemGroup = await conection.execute(`SELECT * FROM item_group WHERE id = ?`, [id]);
+        if (itemGroup.length > 0) {
             res.status(httpStatus.OK).json({
-                data: itemGroup[0],
+                data: itemGroup,
                 module: Module
             });
         } else {
