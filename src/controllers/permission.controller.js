@@ -4,11 +4,11 @@ const Module = 'permission';
 
 async function getPermissRol(req,res){
     try {
-        const permiss = await conection.execute(`select u.name, r.name,m.module,p.permiss from user u join rol r on u.rol = r.id join permission p on p.rol = r.id join module m on m.id = p.module order by p.id desc`);
+        const permiss = await conection.execute(`select p.id,u.name as userName,r.name,m.module,p.permiss from user u join rol r on u.rol = r.id join permission p on p.rol = r.id join module m on m.id = p.module order by p.id desc`);
 
         if(permiss){
             res.status(httpStatus.OK).json({
-                data: permiss,
+                data: permiss[0],
                 module: Module
             });
         }
@@ -38,9 +38,54 @@ async function savePermission(req, res){
             module: Module,
         });
     }
+};
+
+async function updatePermission(req, res){
+    try {
+        const { permiss, modules, rol } = req.body;
+        const id = req.params.id;
+
+        const updatePermiss = await conection.execute(`UPDATE permission SET permiss=?, module=?, rol=? WHERE id = ?`,[permiss, modules, rol, id]);
+
+        if(updatePermiss){
+            res.status(httpStatus.OK).json({
+                message: 'Registro actualizado',
+                module: Module
+            })
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+            message: `Error interno en el servidor: ${error}`,
+            module: Module,
+        });
+    }
+};
+
+async function deletePermission(req, res){
+    try {
+        const id = req.params.id;
+
+        const deletePermiss = await conection.execute(`DELETE FROM permission WHERE id = ?`,[id]);
+
+        if(deletePermiss){
+            res.status(httpStatus.OK).json({
+                message:" Registro eliminado",
+                module: Module
+            })
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+            message: `Error interno en el servidor: ${error}`,
+            module: Module,
+        });
+    }
 }
 
 module.exports = {
     getPermissRol,
-    savePermission
+    savePermission,
+    updatePermission,
+    deletePermission
 }

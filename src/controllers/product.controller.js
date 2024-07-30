@@ -43,8 +43,8 @@ async function getOneProduct(req, res) {
 
 async function saveproduct (req, res){
     try {
-        const { name, description } = req.body;
-        const saveproduct = await conection.execute(`INSERT INTO product (name, description) VALUE (?,?)`,[name, description]);
+        const { name, description, user } = req.body;
+        const saveproduct = await conection.execute(`INSERT INTO product (name, description, user) VALUE (?,?,?)`,[name, description, user]);
         if(saveproduct){
             res.status(httpStatus.CREATED).json({
                 message: "Registro creado",

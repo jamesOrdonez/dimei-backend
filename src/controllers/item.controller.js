@@ -4,9 +4,9 @@ const Module = 'item'
 
 async function saveItems(req, res) {
     try {
-        const { description, amount, group_item, position, price, state } = req.body;
+        const { description, amount, group_item, position, price, variable, value1, mathOperation, value2, unitOfmeasure, user } = req.body;
 
-        const data = await conection.execute(`INSERT INTO item (description, amount, group_item, position, price, state) VALUE (?,?,?,?,?,?)`, [description, amount, group_item, position, price, state]);
+        const data = await conection.execute(`INSERT INTO item (description, amount, group_item, position, price, variable, value1, mathOperation, value2, unitOfmeasure, user ) VALUE (?,?,?,?,?,?,?,?,?,?,?)`, [description, amount, group_item, position, price, variable, value1, mathOperation, value2, unitOfmeasure, user]);
         if (data) {
             res.status(httpStatus.CREATED).json({
                 message: "Registro creado",
@@ -66,34 +66,13 @@ async function getOneItem(req, res) {
 
 async function updateItem(req, res) {
     try {
-        const { description, amount, group_item, position, price, state } = req.body;
+        const { description, amount, group_item, position, price, variable, value1, mathOperation, value2, unitOfmeasure } = req.body;
         const id = req.params.id;
-        const update = conection.execute(`UPDATE item SET description=?, amount=?, group_item=?, position=?, price=?, state=? WHERE id=${id}`, [description, amount, group_item, position, price, state]);
+        const update = conection.execute(`UPDATE item SET description=?, amount=?, group_item=?, position=?, price=?, variable=?, value1=?, mathOperation=?, value2=?, unitOfmeasure=? WHERE id=${id}`, [description, amount, group_item, position, price, variable, value1, mathOperation, value2, unitOfmeasure, id]);
 
         if (update) {
             res.status(httpStatus.OK).json({
-                message: 'registro actualizado',
-                module: Module
-            })
-        }
-    } catch (error) {
-        console.log(error);
-        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-            message: `Error interno en el servidor: ${error}`,
-            module: Module
-        });
-    }
-}
-
-async function updateItem(req, res) {
-    try {
-        const { description, amount, group_item, position, price, state } = req.body;
-        const id = req.params.id;
-        const update = conection.execute(`UPDATE item SET description=?, amount=?, group_item=?, position=?, price=?, state=? WHERE id=${id}`, [description, amount, group_item, position, price, state]);
-
-        if (update) {
-            res.status(httpStatus.OK).json({
-                message: 'registro actualizado',
+                message: 'Registro actualizado',
                 module: Module
             })
         }

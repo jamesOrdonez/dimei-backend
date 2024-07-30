@@ -1,5 +1,5 @@
 const router = require("express").Router();
-const itemGroupController = require("../../controllers/item.group.controller");
+const itemGroupController = require("../../controllers/item_group.controller");
 const protectedRoute = require("../../middleware/protected.route");
 const Module = "item_group";
 
