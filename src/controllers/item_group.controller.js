@@ -4,9 +4,9 @@ const Module = "item_group";
 
 async function saveItem(req, res) {
     try {
-        const { name, state } = req.body;
+        const { name, state, company } = req.body;
 
-        const item_group = await conection.execute(`INSERT INTO item_group (name, state) VALUE (?, ?)`, [name, state]);
+        const item_group = await conection.execute(`INSERT INTO item_group (name, state, company) VALUE (?, ?)`, [name, state, company]);
         if (item_group) {
             res.status(httpStatus.CREATED).json({
                 message: "Registro guardado",
@@ -25,7 +25,8 @@ async function saveItem(req, res) {
 
 async function getItemGroup(req, res) {
     try {
-        const query = await conection.execute('SELECT * FROM item_group ORDER BY 1 DESC');
+        const id = req.params.id;
+        const query = await conection.execute(`SELECT * FROM item_group WHERE company = ? ORDER BY 1 DESC`,[id]);
         if (query) {
             res.status(httpStatus.OK).json({
                 data: query[0],

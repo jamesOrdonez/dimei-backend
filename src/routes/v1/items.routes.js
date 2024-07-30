@@ -8,8 +8,8 @@ const options = {
 }
 
 router.post("/saveItem",protectedRoute(options), ItemController.saveItems)
-       .get('/getItem', protectedRoute(options), ItemController.getItems)
-       .get('/oneItem',protectedRoute(options), ItemController.getOneItem)
+       .get('/getItem/:id', protectedRoute(options), ItemController.getItems)
+       .get('/oneItem/:id',protectedRoute(options), ItemController.getOneItem)
        .put('/updateItem/:id',protectedRoute(options),ItemController.updateItem)
        .delete('/deleteItem/:id',protectedRoute(options), ItemController.deleteItem);
 

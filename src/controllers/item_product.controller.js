@@ -25,9 +25,9 @@ async function getItemProduct(req, res){
 
 async function saveItemProduct(req,res){
     try {
-        const { product, item, quantity } = req.body;
+        const { product, item, quantity, company } = req.body;
 
-        const save = await conection.execute(`INSERT INTO item_product (product, item, quantity) VALUES (?,?,?)`,[product, item, quantity]);
+        const save = await conection.execute(`INSERT INTO item_product (product, item, quantity, company) VALUES (?,?,?)`,[product, item, quantity, company]);
 
         if(save){
             res.status(httpStatus.OK).json({

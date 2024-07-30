@@ -22,16 +22,18 @@ const protectedRoute = (options) => {
 
       const method = req.method.toUpperCase();
       const module = options.Module;
+      const company = tokenData.company;
 
       //? Permisos del rol
       const permiss = await conection.execute(
-        `SELECT u.name, p.permiss, p.id, m.module 
+        `SELECT u.name, p.permiss, p.id, m.module
          FROM user u 
          JOIN rol r ON r.id = u.rol 
          JOIN permission p ON p.rol = r.id 
          JOIN module m ON m.id = p.module 
-         WHERE r.id = ?`, 
-        [rolId]
+         JOIN company c on c.id = u.company
+         WHERE r.id = ? AND c.id = ?`, 
+        [rolId, company]
       );
 
       console.log("🚀 ~ permiss:", permiss);

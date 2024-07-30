@@ -7,7 +7,7 @@ const options = {
       Module: Module
 }
 
-router.get("/getItemGroup", protectedRoute(options), itemGroupController.getItemGroup)
+router.get("/getItemGroup/:id", protectedRoute(options), itemGroupController.getItemGroup)
       .get("/oneItemgroup", protectedRoute(options), itemGroupController.getOneItemGroup)
       .post("/saveItemGroup", protectedRoute(options), itemGroupController.saveItem)
       .put("/updateItemGroup/:id", protectedRoute(options), itemGroupController.updateItemGroup)

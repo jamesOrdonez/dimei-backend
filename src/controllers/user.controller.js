@@ -5,12 +5,12 @@ const Module = "user";
 
 async function saveUser(req, res) {
   try {
-    const { name, rol, user, password, state } = req.body;
+    const { name, rol, user, password, state, company } = req.body;
     const passEncripted = await bcrypt.hash(password, 8);
 
     const saveUser = await conection.execute(
-      `INSERT INTO user (name, rol, user, password, state) VALUES (?, ?, ?, ?, ?)`,
-      [name, rol, user, passEncripted, state]
+      `INSERT INTO user (name, rol, user, password, state, company) VALUES (?, ?, ?, ?, ?, ?)`,
+      [name, rol, user, passEncripted, state, company]
     );
 
     if (saveUser) {
@@ -30,7 +30,7 @@ async function saveUser(req, res) {
 
 async function getUser(req, res) {
   try {
-    const data = await conection.execute("SELECT * FROM user ORDER BY 1 DESC");
+    const data = await conection.execute(`SELECT * FROM user WHERE company = ? ORDER BY 1 DESC`,[id]);
     if (data) {
       res.status(httpStatus.OK).json({
         data: data[0],

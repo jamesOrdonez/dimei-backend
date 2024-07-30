@@ -4,7 +4,8 @@ const Module = "product"
 
 async function getproduct(req, res) {
     try {
-        const product = await conection.execute("SELECT * FROM product ORDER BY 1 DESC");
+        const id = req.params.id;
+        const product = await conection.execute(`SELECT * FROM product WHERE company = ? ORDER BY 1 DESC`, [id]);
         if (product) {
             res.status(httpStatus.OK).json({
                 data: product[0],
@@ -43,8 +44,8 @@ async function getOneProduct(req, res) {
 
 async function saveproduct (req, res){
     try {
-        const { name, description, user } = req.body;
-        const saveproduct = await conection.execute(`INSERT INTO product (name, description, user) VALUE (?,?,?)`,[name, description, user]);
+        const { name, description, user, company } = req.body;
+        const saveproduct = await conection.execute(`INSERT INTO product (name, description, user, company) VALUE (?,?,?,?)`,[name, description, user, company]);
         if(saveproduct){
             res.status(httpStatus.CREATED).json({
                 message: "Registro creado",

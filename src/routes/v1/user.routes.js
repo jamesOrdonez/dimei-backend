@@ -9,7 +9,7 @@ const options = {
 
 router
   .post("/saveUser", userController.saveUser)
-  .get("/getUser", userController.getUser)
+  .get("/getUser/:id", userController.getUser)
   .put("/updateUser/:id", userController.updateuser)
   .delete("/deleteuser/:id", userController.deleteUser);
 

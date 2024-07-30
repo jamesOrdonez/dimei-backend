@@ -4,7 +4,8 @@ const Module = 'permission';
 
 async function getPermissRol(req,res){
     try {
-        const permiss = await conection.execute(`select p.id,u.name as userName,r.name,m.module,p.permiss from user u join rol r on u.rol = r.id join permission p on p.rol = r.id join module m on m.id = p.module order by p.id desc`);
+        const id = req.params.id;
+        const permiss = await conection.execute(`select p.id,u.name as userName,r.name,m.module,p.permiss from user u join rol r on u.rol = r.id join permission p on p.rol = r.id join module m on m.id = p.module join company c on c.id = u.company where p.company = ? order by p.id desc`, [id]);
 
         if(permiss){
             res.status(httpStatus.OK).json({
@@ -23,8 +24,8 @@ async function getPermissRol(req,res){
 
 async function savePermission(req, res){
     try {
-        const { permiss, modules, rol } = req.body;
-        const save = await conection.execute(`INSERT INTO permission (permiss, module, rol ) VALUES (?,?,?)`,[permiss, modules, rol]);
+        const { permiss, modules, rol, company } = req.body;
+        const save = await conection.execute(`INSERT INTO permission (permiss, module, rol ) VALUES (?,?,?,?)`,[permiss, modules, rol, company]);
         if(save){
             res.status(httpStatus.CREATED).json({
                 message: 'Registro creado',

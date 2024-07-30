@@ -14,12 +14,14 @@ async function login(req, res){
             })
         }
 
-        const [query] = await conection.execute(`SELECT * FROM user WHERE state = 1 AND user = ?`, [user]);
+        const [query] = await conection.execute(`SELECT * FROM user u join company c on c.id = u.company WHERE u.state = 1 AND u.user = ?`, [user]);
         if(query){
+            console.log(query);
             const userId = query[0].id;
-            const userName = query[0].name;
+            const user = query[0].user;
             const passwordEncripted = query[0].password;
             const rolId = query[0].rol;
+            const company = query[0].company
 
             const validatePass = await bcrypt.compare(password, passwordEncripted);
 
@@ -31,15 +33,16 @@ async function login(req, res){
                 const token = jwt.sign(
                     {
                         userId: userId,
-                        userName: userName,
-                        rolId: rolId
+                        user: user,
+                        rolId: rolId,
+                        company: company
                     },
-                    "super_secret",
+                    "super_secret", 
                     {
                       expiresIn: "8h",
                     }
                 )
-                return res.status(httpStatus.OK).json({ token, userId, userName, rolId });
+                return res.status(httpStatus.OK).json({ token, userId, user, rolId, company });
             };
 
         }

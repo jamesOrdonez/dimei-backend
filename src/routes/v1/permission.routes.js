@@ -8,7 +8,7 @@ const options = {
 }
 
 router
-    .get("/getPermission", protectedRoute(options), controller.getPermissRol)
+    .get("/getPermission/:id", protectedRoute(options), controller.getPermissRol)
     .post("/savePermission", protectedRoute(options), controller.savePermission)
     .put("/updatePermission/:id", protectedRoute(options), controller.updatePermission)
     .delete("/deletePermission/:id", protectedRoute(options), controller.deletePermission);
