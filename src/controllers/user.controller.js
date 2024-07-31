@@ -6,7 +6,8 @@ const Module = "user";
 async function saveUser(req, res) {
   try {
     const { name, rol, user, password, state, company } = req.body;
-    const passEncripted = await bcrypt.hash(password, 8);
+    console.log("🚀 ~ saveUser ~ password:", req.body);
+    const passEncripted = await bcrypt.hash(password, 14);
 
     const saveUser = await conection.execute(
       `INSERT INTO user (name, rol, user, password, state, company) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -29,8 +30,12 @@ async function saveUser(req, res) {
 }
 
 async function getUser(req, res) {
+  const { id } = req.params;
   try {
-    const data = await conection.execute(`SELECT * FROM user WHERE company = ? ORDER BY 1 DESC`,[id]);
+    const data = await conection.execute(
+      `SELECT * FROM user WHERE company = ? ORDER BY 1 DESC`,
+      [id]
+    );
     if (data) {
       res.status(httpStatus.OK).json({
         data: data[0],
@@ -44,19 +49,21 @@ async function getUser(req, res) {
       module: Module,
     });
   }
-};
+}
 
-async function getOneUser(req, res){
+async function getOneUser(req, res) {
   try {
     const id = req.params.id;
 
-    const oneUser = await conection.execute(`SELECT * FROM user WHERE id = ?`,[id]);
+    const oneUser = await conection.execute(`SELECT * FROM user WHERE id = ?`, [
+      id,
+    ]);
 
-    if(oneUser){
+    if (oneUser) {
       res.status(httpStatus.OK).json({
         data: oneUser,
-        module: Module
-      })
+        module: Module,
+      });
     }
   } catch (error) {
     console.error(error);
@@ -92,12 +99,15 @@ async function updateuser(req, res) {
   }
 }
 
-async function deleteUser(req, res){
+async function deleteUser(req, res) {
   try {
     const id = req.params.id;
-    const deleteUser = await conection.execute(`DELETE FROM user WHERE id = ?`,[id]);
+    const deleteUser = await conection.execute(
+      `DELETE FROM user WHERE id = ?`,
+      [id]
+    );
 
-    if(deleteUser){
+    if (deleteUser) {
       res.status(httpStatus.OK).json({
         message: "Usuario eliminado.",
         module: Module,
@@ -117,5 +127,5 @@ module.exports = {
   getUser,
   getOneUser,
   updateuser,
-  deleteUser
+  deleteUser,
 };
