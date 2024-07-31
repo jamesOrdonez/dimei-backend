@@ -6,7 +6,6 @@ const Module = "user";
 async function saveUser(req, res) {
   try {
     const { name, rol, user, password, state, company } = req.body;
-    console.log("🚀 ~ saveUser ~ password:", req.body);
     const passEncripted = await bcrypt.hash(password, 14);
 
     const saveUser = await conection.execute(
