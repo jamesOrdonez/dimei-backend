@@ -8,9 +8,13 @@ const options = {
 };
 
 router
-  .post("/saveUser", userController.saveUser)
-  .get("/getUser/:id", userController.getUser)
-  .put("/updateUser/:id", userController.updateuser)
-  .delete("/deleteuser/:id", userController.deleteUser);
+  .post("/saveUser", protectedRoute(options), userController.saveUser)
+  .get("/getUser/:id", protectedRoute(options), userController.getUser)
+  .put("/updateUser/:id", protectedRoute(options), userController.updateuser)
+  .delete(
+    "/deleteuser/:id",
+    protectedRoute(options),
+    userController.deleteUser
+  );
 
 module.exports = router;
