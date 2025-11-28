@@ -2,9 +2,9 @@
 const mysql = require("mysql2/promise");
 
 const connection = mysql.createPool({
-  host: "vps.equiposdimei.com",
-  user: "root",
-  password: "qwerty38/*",
+  host: "45.79.25.250",
+  user: "pirata",
+  password: "Qwerty38/*Pass",
   database: "dimei",
   port: 3306,
 });
