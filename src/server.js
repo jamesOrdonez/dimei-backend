@@ -1,10 +1,18 @@
 const express = require("express");
+const body = require("body-parser");
 const cors = require("cors");
 
 const app = express();
 const PORT = 8080;
 
-const v1Routes = require("./v1/routes");
+const v1Routes = require("./routes");
+
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+  })
+);
 
 // Middleware
 app.use(express.json({ limit: "50mb" }));
@@ -25,6 +33,7 @@ app.get("/", (req, res) => {
 
 
 // Servidor
+
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
