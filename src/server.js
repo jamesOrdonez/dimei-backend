@@ -24,6 +24,10 @@ app.use(function(req, res, next) {
 });
 
 app.use("/api/v1/", v1Routes);
+app.get("/", (req, res) => {
+    res.send("GET API DIMEI BACKEND ✅");
+});
+
 
 app.listen(PORT, () => {
   console.warn(`server listening on port ${PORT}`);

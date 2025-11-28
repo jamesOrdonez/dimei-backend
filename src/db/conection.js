@@ -1,22 +1,24 @@
-//*Conexion a la bd
-
+// * Conexion a la BD
 const mysql = require("mysql2/promise");
 
-/* const connection = mysql.createPool({
-  host: "localhost",
-  user: "whoaomi",
-  password: "12345678",
-  database: "dimei",
-  port: 3306,
-}); */
-
 const connection = mysql.createPool({
-  host: "localhost",
+  host: "vps.equiposdimei.com",
   user: "root",
-  password: "",
+  password: "qwerty38/*",
   database: "dimei",
   port: 3306,
 });
 
-//exportamos la conexion
+async function testConnection() {
+  try {
+    const conn = await connection.getConnection();
+    console.log("🟢 Conectado correctamente a la base de datos");
+    conn.release();
+  } catch (error) {
+    console.error("🔴 Error conectando a la base de datos:", error.message);
+  }
+}
+
+testConnection();
+
 module.exports = connection;
