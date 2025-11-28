@@ -19,6 +19,10 @@ app.use(cors({
 
 // Rutas
 app.use("/api/v1/", v1Routes);
+app.get("/", (req, res) => {
+    res.send("GET API DIMEI BACKEND ✅");
+});
+
 
 // Servidor
 app.listen(PORT, () => {
