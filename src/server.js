@@ -9,7 +9,7 @@ const v1Routes = require("./routes");
 
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: "http://localhost:3001",
     credentials: true,
   })
 );
@@ -20,7 +20,7 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // Configuración CORS 
 app.use(cors({
-  origin: "http://vps.equiposdimei.com",
+  origin: "http://localhost:3001",
   methods: ["GET","POST","PUT","DELETE","PATCH"],
   credentials: true // si envías cookies
 }));
