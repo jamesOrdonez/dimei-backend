@@ -7,30 +7,24 @@ const PORT = 8080;
 
 const v1Routes = require("./routes");
 
-app.use(
-  cors({
-    origin: "http://localhost:3001",
-    credentials: true,
-  })
-);
-
 // Middleware
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// Configuración CORS 
-app.use(cors({
-  origin: "http://localhost:3001",
-  methods: ["GET","POST","PUT","DELETE","PATCH"],
-  credentials: true // si envías cookies
-}));
+// Configuración CORS
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    credentials: true, // si envías cookies
+  })
+);
 
 // Rutas
 app.use("/api/v1/", v1Routes);
 app.get("/", (req, res) => {
-    res.send("GET API DIMEI BACKEND ✅");
+  res.send("GET API DIMEI BACKEND ✅");
 });
-
 
 // Servidor
 

@@ -19,7 +19,6 @@ async function saveItems(req, res) {
       company,
     } = req.body;
 
-    // 🔐 Normaliza valores: undefined / '' / NaN → null
     const safe = (v) => {
       if (v === undefined || v === "" || Number.isNaN(v)) return null;
       return v;
@@ -203,10 +202,62 @@ async function deleteItem(req, res) {
   }
 }
 
+async function entranceItems(req, res) {
+  try {
+    const id = req.params.id;
+    const { entranceAmount } = req.body;
+
+    console.log(entranceAmount);
+
+    const response = await conection.execute(
+      `update item set amount = (amount + ?) where id = ?`,
+      [entranceAmount, id]
+    );
+
+    if (response) {
+      res.status(httpStatus.OK).json({
+        message: "Registro creado",
+        module: Module,
+      });
+    }
+  } catch (error) {
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: "Error interno en el servidor: " + error,
+      module: Module,
+    });
+  }
+}
+
+async function exitItems(req, res) {
+  try {
+    const id = req.params.id;
+    const { entranceAmount } = req.body;
+
+    const response = await conection.execute(
+      `update item set amount = (amount - ?) where id = ?`,
+      [entranceAmount, id]
+    );
+
+    if (response) {
+      res.status(httpStatus.OK).json({
+        message: "Registro actualizado",
+        module: Module,
+      });
+    }
+  } catch (error) {
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: "Error interno en el servidor: " + error,
+      module: Module,
+    });
+  }
+}
+
 module.exports = {
   saveItems,
   getItems,
   getOneItem,
   updateItem,
   deleteItem,
+  entranceItems,
+  exitItems,
 };
