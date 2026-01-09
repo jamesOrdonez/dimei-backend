@@ -17,7 +17,7 @@ async function login(req, res) {
 
     // Consulta a la BD
     const [query] = await conection.execute(
-      `SELECT * FROM user u 
+      `SELECT *,u.id as userId FROM user u 
        JOIN company c ON c.id = u.company 
        WHERE u.state = 1 AND u.user = ?`,
       [user]
@@ -57,10 +57,10 @@ async function login(req, res) {
       token,
       userId: data.id,
       user: data.user,
+      userId: data.userId,
       rolId: data.rol,
       company: data.company,
     });
-
   } catch (error) {
     console.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
