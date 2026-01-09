@@ -7,7 +7,7 @@ async function getItemProduct(req, res) {
   try {
     const id = req.params.id;
     const itemProduct = await conection.execute(
-      `select p.name, i.description, ip.quantity from product p join item_product ip on ip.product = p.id join item i on i.id = ip.item where p.id =?`,
+      `select ip.id,ip.product,ip.item, p.name, i.description, ip.quantity from product p join item_product ip on ip.product = p.id join item i on i.id = ip.item where p.id =?`,
       [id]
     );
 
@@ -52,12 +52,12 @@ async function saveItemProduct(req, res) {
 
 async function updateItemProduct(req, res) {
   try {
-    const { product, item, quantity } = req.body;
+    const { quantity } = req.body;
     const id = req.params.id;
 
     const update = await conection.execute(
-      `UPDATE item_product SET product = ?, item = ?, quantity = ? WHERE id = ?`,
-      [product, item, quantity, id]
+      `UPDATE item_product SET  quantity = ? WHERE id = ?`,
+      [quantity, id]
     );
 
     if (update) {
