@@ -46,20 +46,24 @@ async function getOneProduct(req, res) {
 async function saveproduct(req, res) {
   try {
     const { name, description, user, company } = req.body;
-    const saveproduct = await conection.execute(
-      `INSERT INTO product (name, description, user, company) VALUE (?,?,?,?)`,
+
+    const [result] = await conection.execute(
+      `INSERT INTO product (name, description, user, company) VALUES (?,?,?,?)`,
       [name, description, user, company]
     );
-    if (saveproduct) {
-      res.status(httpStatus.CREATED).json({
-        message: "Registro creado",
-        module: Module,
-      });
-    }
+
+    return res.status(httpStatus.CREATED).json({
+      message: "Registro creado",
+      data: {
+        id: result.insertId, // 👈 ID del producto
+      },
+      module: Module,
+    });
   } catch (error) {
     console.error(error);
-    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: `Error interno en el servidor: ${error}`,
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: `Error interno en el servidor`,
+      error: error.message,
       module: Module,
     });
   }

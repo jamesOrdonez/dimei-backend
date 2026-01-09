@@ -31,7 +31,7 @@ async function saveItemProduct(req, res) {
     const { product, item, quantity, company } = req.body;
 
     const save = await conection.execute(
-      `INSERT INTO item_product (product, item, quantity, company) VALUES (?,?,?)`,
+      `INSERT INTO item_product (product, item, quantity, company) VALUES (?,?,?,?)`,
       [product, item, quantity, company]
     );
 
