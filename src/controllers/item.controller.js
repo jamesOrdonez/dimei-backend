@@ -8,7 +8,9 @@ async function saveItems(req, res) {
       description,
       amount,
       group_item,
-      position,
+      position1,
+      position2,
+      position3,
       price,
       variable,
       value1,
@@ -30,7 +32,9 @@ async function saveItems(req, res) {
         description,
         amount,
         group_item,
-        position,
+        position1,
+        position2,
+        position3,
         price,
         variable,
         value1,
@@ -40,13 +44,15 @@ async function saveItems(req, res) {
         user,
         company
       )
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `,
       [
         safe(description),
         safe(amount),
         safe(group_item),
-        safe(position),
+        safe(position1),
+        safe(position2),
+        safe(position3),
         safe(price),
         safe(variable),
         safe(value1),
@@ -77,7 +83,7 @@ async function getItems(req, res) {
   try {
     const id = req.params.id;
     const data = await conection.execute(
-      `SELECT i.id, description, amount, ig.name, i.position, price, variable, value1, mathOperation, value2, u.unitOfMeasure  FROM item i 
+      `SELECT i.id, description, amount, ig.name, i.position1, i.position2, i.position3, price, variable, value1, mathOperation, value2, u.unitOfMeasure  FROM item i 
       left join unitofmeasure u on u.id = i.unitOfMeasure
       left join item_group ig on ig.id = i.group_item WHERE i.company = ? ORDER BY 1 DESC`,
       [id]
@@ -131,7 +137,9 @@ async function updateItem(req, res) {
       "description",
       "amount",
       "group_item",
-      "position",
+      "position1",
+      "position2",
+      "position3",
       "price",
       "variable",
       "value1",

@@ -14,7 +14,8 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 // Configuración CORS
 app.use(
   cors({
-    origin: "https://vps.equiposdimei.com",
+   /*  origin: "https://vps.equiposdimei.com", */
+   origin: "http://localhost:3000",
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true, // si envías cookies
   })
