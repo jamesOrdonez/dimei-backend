@@ -21,6 +21,8 @@ async function saveItems(req, res) {
       company,
     } = req.body;
 
+    const img = req.file ? req.file.buffer : null;
+
     const safe = (v) => {
       if (v === undefined || v === "" || Number.isNaN(v)) return null;
       return v;
@@ -42,9 +44,10 @@ async function saveItems(req, res) {
         value2,
         unitOfMeasure,
         user,
-        company
+        company,
+        img
       )
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `,
       [
         safe(description),
@@ -61,20 +64,19 @@ async function saveItems(req, res) {
         safe(unitOfMeasure),
         safe(user),
         safe(company),
-      ]
+        img,
+      ],
     );
 
-    return res.status(httpStatus.CREATED).json({
+    return res.status(201).json({
       message: "Registro creado",
       id: result.insertId,
-      module: Module,
     });
   } catch (error) {
     console.error("❌ ERROR AL INSERTAR ITEM:", error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+    return res.status(500).json({
       message: "Error interno en el servidor",
       error: error.message,
-      module: Module,
     });
   }
 }
@@ -82,22 +84,49 @@ async function saveItems(req, res) {
 async function getItems(req, res) {
   try {
     const id = req.params.id;
-    const data = await conection.execute(
-      `SELECT i.id, description, amount, ig.name, i.position1, i.position2, i.position3, price, variable, value1, mathOperation, value2, u.unitOfMeasure  FROM item i 
-      left join unitofmeasure u on u.id = i.unitOfMeasure
-      left join item_group ig on ig.id = i.group_item WHERE i.company = ? ORDER BY 1 DESC`,
-      [id]
+
+    const [rows] = await conection.execute(
+      `
+      SELECT 
+        i.id,
+        i.description,
+        i.amount,
+        ig.name AS group_name,
+        i.position1,
+        i.position2,
+        i.position3,
+        i.price,
+        i.variable,
+        i.value1,
+        i.mathOperation,
+        i.value2,
+        u.unitOfMeasure,
+        i.img
+      FROM item i
+      LEFT JOIN unitofmeasure u ON u.id = i.unitOfMeasure
+      LEFT JOIN item_group ig ON ig.id = i.group_item
+      WHERE i.company = ?
+      ORDER BY i.id DESC
+      `,
+      [id],
     );
-    if (data) {
-      res.status(httpStatus.OK).json({
-        data: data[0],
-        module: Module,
-      });
-    }
+
+    const data = rows.map((item) => ({
+      ...item,
+      img: item.img
+        ? `data:image/jpeg;base64,${item.img.toString("base64")}`
+        : null,
+    }));
+
+    return res.status(httpStatus.OK).json({
+      data,
+      module: Module,
+    });
   } catch (error) {
-    console.log(error);
-    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: `Error interno en el servidor: ${error}`,
+    console.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: "Error interno en el servidor",
+      error: error.message,
       module: Module,
     });
   }
@@ -131,7 +160,7 @@ async function getOneItem(req, res) {
 
 async function updateItem(req, res) {
   try {
-    const id = req.params.id;
+    const { id } = req.params;
 
     const fields = [
       "description",
@@ -148,16 +177,32 @@ async function updateItem(req, res) {
       "unitOfMeasure",
     ];
 
-    const values = [];
     const updates = [];
+    const values = [];
 
     fields.forEach((field) => {
-      if (req.body[field] !== undefined) {
-        updates.push(`${field} = ?`);
-        values.push(req.body[field]);
+      let value = req.body[field];
+      console.log("img:" + value);
+      if (value === undefined) return;
+
+      if (value === null || value === "" || value === "undefined") {
+        value = null;
       }
+
+      if (field === "variable" && value !== null) {
+        value = Number(value);
+      }
+
+      updates.push(`${field} = ?`);
+      values.push(value);
     });
 
+    if (req.file) {
+      updates.push("img = ?");
+      values.push(req.file.buffer);
+    }
+
+    console.log(req.file);
     if (updates.length === 0) {
       return res.status(400).json({
         message: "No hay datos para actualizar",
@@ -176,7 +221,7 @@ async function updateItem(req, res) {
     await conection.execute(sql, values);
 
     res.status(httpStatus.OK).json({
-      message: "Registro actualizado",
+      message: "Registro actualizado correctamente",
       module: Module,
     });
   } catch (error) {
@@ -194,7 +239,7 @@ async function deleteItem(req, res) {
 
     const deleteItem = await conection.execute(
       `DELETE FROM item WHERE id = ?`,
-      [id]
+      [id],
     );
     if (deleteItem) {
       res.status(httpStatus.OK).json({
@@ -219,7 +264,7 @@ async function entranceItems(req, res) {
 
     const response = await conection.execute(
       `update item set amount = (amount + ?) where id = ?`,
-      [entranceAmount, id]
+      [entranceAmount, id],
     );
 
     if (response) {
@@ -243,7 +288,7 @@ async function exitItems(req, res) {
 
     const response = await conection.execute(
       `update item set amount = (amount - ?) where id = ?`,
-      [entranceAmount, id]
+      [entranceAmount, id],
     );
 
     if (response) {
