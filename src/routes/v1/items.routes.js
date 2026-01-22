@@ -15,7 +15,7 @@ router
     protectedRoute(options),
     ItemController.saveItems,
   )
-  .get("/getItem/:id", protectedRoute(options), ItemController.getItems)
+  .get("/getItem/:id", ItemController.getItems)
   .get("/oneItem/:id", protectedRoute(options), ItemController.getOneItem)
   .put(
     "/updateItem/:id",
