@@ -16,6 +16,7 @@ router
     ItemController.saveItems,
   )
   .get("/getItem/:id", ItemController.getItems)
+  .get("/getItem/image/:id", ItemController.getItemImage)
   .get("/oneItem/:id", protectedRoute(options), ItemController.getOneItem)
   .put(
     "/updateItem/:id",

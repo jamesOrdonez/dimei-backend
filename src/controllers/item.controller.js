@@ -100,8 +100,7 @@ async function getItems(req, res) {
         i.value1,
         i.mathOperation,
         i.value2,
-        u.unitOfMeasure,
-        i.img
+        u.unitOfMeasure
       FROM item i
       LEFT JOIN unitofmeasure u ON u.id = i.unitOfMeasure
       LEFT JOIN item_group ig ON ig.id = i.group_item
@@ -111,25 +110,9 @@ async function getItems(req, res) {
       [id],
     );
 
-    for (const item of rows) {
-      if (item.img) {
-        item.img = `data:image/jpeg;base64,${item.img.toString("base64")}`;
-      } else {
-        item.img = null;
-      }
-    }
-
-    return res.status(httpStatus.OK).json({
-      data: rows,
-      module: Module,
-    });
+    return res.status(200).json({ data: rows });
   } catch (error) {
-    console.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: "Error interno en el servidor",
-      error: error.message,
-      module: Module,
-    });
+    return res.status(500).json({ message: "Error interno", error });
   }
 }
 
@@ -306,6 +289,28 @@ async function exitItems(req, res) {
   }
 }
 
+//IMG
+async function getItemImage(req, res) {
+  try {
+    const { id } = req.params;
+
+    const [[item]] = await conection.execute(
+      "SELECT img FROM item WHERE id = ?",
+      [id],
+    );
+
+    if (!item || !item.img) {
+      return res.status(404).end();
+    }
+
+    res.setHeader("Content-Type", "image/jpeg");
+    res.setHeader("Cache-Control", "public, max-age=86400"); // cache 1 día
+    res.send(item.img);
+  } catch (error) {
+    res.status(500).json({ message: "Error interno" });
+  }
+}
+
 module.exports = {
   saveItems,
   getItems,
@@ -314,4 +319,5 @@ module.exports = {
   deleteItem,
   entranceItems,
   exitItems,
+  getItemImage,
 };
