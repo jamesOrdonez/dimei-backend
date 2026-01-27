@@ -111,15 +111,16 @@ async function getItems(req, res) {
       [id],
     );
 
-    const data = rows.map((item) => ({
-      ...item,
-      img: item.img
-        ? `data:image/jpeg;base64,${item.img.toString("base64")}`
-        : null,
-    }));
+    for (const item of rows) {
+      if (item.img) {
+        item.img = `data:image/jpeg;base64,${item.img.toString("base64")}`;
+      } else {
+        item.img = null;
+      }
+    }
 
     return res.status(httpStatus.OK).json({
-      data,
+      data: rows,
       module: Module,
     });
   } catch (error) {
