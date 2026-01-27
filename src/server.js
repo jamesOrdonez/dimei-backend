@@ -15,7 +15,11 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(
   cors({
     /*  origin: "https://vps.equiposdimei.com", */
+<<<<<<< HEAD
     origin: "http://192.168.0.101:3000",
+=======
+    origin: "http://localhost:3000",
+>>>>>>> 3be621b53266703ec04a2e74c72cd71b5ffc9a77
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true, // si envías cookies
   }),
