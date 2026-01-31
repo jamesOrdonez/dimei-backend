@@ -16,7 +16,7 @@ app.use(
   cors({
     /*  origin: "https://vps.equiposdimei.com", */
 
-    origin: "http://192.168.1.104:3000",
+    origin: "http://192.168.0.101:3000",
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true, // si envías cookies
   }),
