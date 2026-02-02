@@ -10,6 +10,7 @@ const options = {
 router
   .post("/saveUser", protectedRoute(options), userController.saveUser)
   .get("/getUser/:id", protectedRoute(options), userController.getUser)
+  .get("/getOneUser/:id", protectedRoute(options), userController.getOneUser)
   .put("/updateUser/:id", protectedRoute(options), userController.updateuser)
   .delete(
     "/deleteuser/:id",
