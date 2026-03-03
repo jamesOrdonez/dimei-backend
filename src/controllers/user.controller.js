@@ -1,50 +1,59 @@
-const conection = require("../db/conection");
 const bcrypt = require("bcryptjs");
 const httpStatus = require("http-status");
+const User = require("../models/user");
+
 const Module = "user";
 
 async function saveUser(req, res) {
   try {
+
     const { name, rol, user, password, state, company } = req.body;
+
     const passEncripted = await bcrypt.hash(password, 14);
 
-    const saveUser = await conection.execute(
-      `INSERT INTO user (name, rol, user, password, state, company) VALUES (?, ?, ?, ?, ?, ?)`,
-      [name, rol, user, passEncripted, state, company]
-    );
+    await User.create({
+      name,
+      rol,
+      user,
+      password: passEncripted,
+      state,
+      company,
+    });
 
-    if (saveUser) {
-      res.status(httpStatus.CREATED).json({
-        message: "Usuario creado exitosamente",
-        module: Module,
-      });
-    }
+    return res.status(httpStatus.CREATED).json({
+      message: "Usuario creado exitosamente",
+      module: Module,
+    });
+
   } catch (error) {
     console.error(error);
-    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: `Error interno en el servidor: ${error}`,
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: "Error interno en el servidor: " + error.message,
       module: Module,
     });
   }
 }
 
 async function getUser(req, res) {
-  const { id } = req.params;
   try {
-    const data = await conection.execute(
-      `SELECT * FROM user WHERE company = ? ORDER BY 1 DESC`,
-      [id]
-    );
-    if (data) {
-      res.status(httpStatus.OK).json({
-        data: data[0],
-        module: Module,
-      });
-    }
+
+    const { id } = req.params;
+
+    const data = await User.findAll({
+      where: { company: id },
+      order: [["id", "DESC"]],
+      attributes: { exclude: ["password"] },
+    });
+
+    return res.status(httpStatus.OK).json({
+      data,
+      module: Module,
+    });
+
   } catch (error) {
     console.error(error);
-    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: `Error interno en el servidor: ${error}`,
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: "Error interno en el servidor: " + error.message,
       module: Module,
     });
   }
@@ -52,22 +61,29 @@ async function getUser(req, res) {
 
 async function getOneUser(req, res) {
   try {
-    const id = req.params.id;
 
-    const oneUser = await conection.execute(`SELECT * FROM user WHERE id = ?`, [
-      id,
-    ]);
+    const { id } = req.params;
 
-    if (oneUser) {
-      res.status(httpStatus.OK).json({
-        data: oneUser,
+    const user = await User.findByPk(id, {
+      attributes: { exclude: ["password"] },
+    });
+
+    if (!user) {
+      return res.status(httpStatus.NOT_FOUND).json({
+        message: "Usuario no encontrado",
         module: Module,
       });
     }
+
+    return res.status(httpStatus.OK).json({
+      data: user,
+      module: Module,
+    });
+
   } catch (error) {
     console.error(error);
-    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: `Error interno en el servidor: ${error}`,
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: "Error interno en el servidor: " + error.message,
       module: Module,
     });
   }
@@ -75,24 +91,31 @@ async function getOneUser(req, res) {
 
 async function updateuser(req, res) {
   try {
-    const { name, rol, user, state } = req.body;
-    const id = req.params.id;
 
-    const update = conection.execute(
-      `UPDATE user SET name = ?, rol = ?, user=?, state=? where id = ${id}`,
-      [name, rol, user, state]
+    const { name, rol, user, state } = req.body;
+    const { id } = req.params;
+
+    const [updated] = await User.update(
+      { name, rol, user, state },
+      { where: { id } }
     );
 
-    if (update) {
-      res.status(httpStatus.OK).json({
-        message: "Usuario actualizado.",
+    if (!updated) {
+      return res.status(httpStatus.NOT_FOUND).json({
+        message: "Usuario no encontrado",
         module: Module,
       });
     }
+
+    return res.status(httpStatus.OK).json({
+      message: "Usuario actualizado.",
+      module: Module,
+    });
+
   } catch (error) {
     console.error(error);
-    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: `Error interno en el servidor: ${error}`,
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: "Error interno en el servidor: " + error.message,
       module: Module,
     });
   }
@@ -100,22 +123,29 @@ async function updateuser(req, res) {
 
 async function deleteUser(req, res) {
   try {
-    const id = req.params.id;
-    const deleteUser = await conection.execute(
-      `DELETE FROM user WHERE id = ?`,
-      [id]
-    );
 
-    if (deleteUser) {
-      res.status(httpStatus.OK).json({
-        message: "Usuario eliminado.",
+    const { id } = req.params;
+
+    const deleted = await User.destroy({
+      where: { id },
+    });
+
+    if (!deleted) {
+      return res.status(httpStatus.NOT_FOUND).json({
+        message: "Usuario no encontrado",
         module: Module,
       });
     }
+
+    return res.status(httpStatus.OK).json({
+      message: "Usuario eliminado.",
+      module: Module,
+    });
+
   } catch (error) {
     console.error(error);
-    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: `Error interno en el servidor: ${error}`,
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: "Error interno en el servidor: " + error.message,
       module: Module,
     });
   }
