@@ -1,85 +1,108 @@
-const httpStatus = require('http-status');
-const conection = require('../db/conection');
-const Module = 'permission';
+const httpStatus = require("http-status");
+const Permission = require("../models/permission");
+const ModuleName = "permission";
+const Module = require("../models/modules");
+const rol = require("../models/rol");
+const User = require("../models/user");
+async function getPermissRol(req, res) {
+    try {
+        const companyId = req.params.id;
 
-async function getPermissRol(req,res){
+        const permissions = await Permission.findAll({
+            where: { company: companyId },
+            order: [["id", "DESC"]],
+            include: [
+                { model: User, attributes: ["name"], as: "userData" },
+                { model: Rol, attributes: ["name"], as: "rolData" },
+                { model: Module, attributes: ["module"], as: "moduleData" },
+            ],
+        });
+
+        res.status(httpStatus.OK).json({
+            data: permissions,
+            module: ModuleName,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+            message: `Error interno en el servidor: ${error.message}`,
+            module: ModuleName,
+        });
+    }
+}
+
+async function savePermission(req, res) {
+    try {
+        const { permiss, module, rol, company } = req.body;
+
+        const newPermiss = await Permission.create({ permiss, module, rol, company });
+
+        res.status(httpStatus.CREATED).json({
+            message: "Registro creado",
+            module: ModuleName,
+            data: newPermiss,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+            message: `Error interno en el servidor: ${error.message}`,
+            module: ModuleName,
+        });
+    }
+}
+
+async function updatePermission(req, res) {
     try {
         const id = req.params.id;
-        const permiss = await conection.execute(`select p.id,u.name as userName,r.name,m.module,p.permiss from user u join rol r on u.rol = r.id join permission p on p.rol = r.id join module m on m.id = p.module join company c on c.id = u.company where p.company = ? order by p.id desc`, [id]);
+        const { permiss, module, rol } = req.body;
 
-        if(permiss){
-            res.status(httpStatus.OK).json({
-                data: permiss[0],
-                module: Module
+        const [updated] = await Permission.update({ permiss, module, rol }, { where: { id } });
+
+        if (!updated) {
+            return res.status(httpStatus.NOT_FOUND).json({
+                message: "Registro no encontrado",
+                module: ModuleName,
             });
         }
+
+        const updatedPermiss = await Permission.findByPk(id);
+
+        res.status(httpStatus.OK).json({
+            message: "Registro actualizado",
+            module: ModuleName,
+            data: updatedPermiss,
+        });
     } catch (error) {
         console.error(error);
         res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-            message: `Error interno en el servidor: ${error}`,
-            module: Module,
+            message: `Error interno en el servidor: ${error.message}`,
+            module: ModuleName,
         });
     }
-};
+}
 
-async function savePermission(req, res){
-    try {
-        const { permiss, modules, rol, company } = req.body;
-        const save = await conection.execute(`INSERT INTO permission (permiss, module, rol ) VALUES (?,?,?,?)`,[permiss, modules, rol, company]);
-        if(save){
-            res.status(httpStatus.CREATED).json({
-                message: 'Registro creado',
-                module: Module
-            })
-        }
-    } catch (error) {
-        console.error(error);
-        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-            message: `Error interno en el servidor: ${error}`,
-            module: Module,
-        });
-    }
-};
-
-async function updatePermission(req, res){
-    try {
-        const { permiss, modules, rol } = req.body;
-        const id = req.params.id;
-
-        const updatePermiss = await conection.execute(`UPDATE permission SET permiss=?, module=?, rol=? WHERE id = ?`,[permiss, modules, rol, id]);
-
-        if(updatePermiss){
-            res.status(httpStatus.OK).json({
-                message: 'Registro actualizado',
-                module: Module
-            })
-        }
-    } catch (error) {
-        console.error(error);
-        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-            message: `Error interno en el servidor: ${error}`,
-            module: Module,
-        });
-    }
-};
-
-async function deletePermission(req, res){
+async function deletePermission(req, res) {
     try {
         const id = req.params.id;
 
-        const deletePermiss = await conection.execute(`DELETE FROM permission WHERE id = ?`,[id]);
+        const deleted = await Permission.destroy({ where: { id } });
 
-        if(deletePermiss){
-            res.status(httpStatus.OK).json({
-                message:" Registro eliminado",
-                module: Module
-            })
+        if (!deleted) {
+            return res.status(httpStatus.NOT_FOUND).json({
+                message: "Registro no encontrado",
+                module: ModuleName,
+            });
         }
+
+        res.status(httpStatus.OK).json({
+            message: "Registro eliminado",
+            module: ModuleName,
+        });
     } catch (error) {
         console.error(error);
         res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-            message: `Error interno en el servidor: ${error}`,
-            module: Module,
+            message: `Error interno en el servidor: ${error.message}`,
+            module: ModuleName,
         });
     }
 }
@@ -88,5 +111,5 @@ module.exports = {
     getPermissRol,
     savePermission,
     updatePermission,
-    deletePermission
-}
+    deletePermission,
+};

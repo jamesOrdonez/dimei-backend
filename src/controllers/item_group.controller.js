@@ -1,47 +1,42 @@
-const conection = require("../db/conection");
 const httpStatus = require("http-status");
+const ItemGroup = require("../models/itemGroup");
 const Module = "item_group";
 
 async function saveItem(req, res) {
   try {
     const { name, state, company } = req.body;
+    const item = await ItemGroup.create({ name, state, company });
 
-    const item_group = await conection.execute(
-      `INSERT INTO item_group (name, state, company) VALUE (?, ?,?)`,
-      [name, state, company]
-    );
-    if (item_group) {
-      res.status(httpStatus.CREATED).json({
-        message: "Registro guardado",
-        module: Module,
-      });
-    }
+    res.status(httpStatus.CREATED).json({
+      message: "Registro guardado",
+      module: Module,
+      data: item,
+    });
   } catch (error) {
     console.error(error);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: `Error interno en el servidor: ${error}`,
+      message: `Error interno en el servidor: ${error.message}`,
       module: Module,
     });
   }
 }
-//ok
+
 async function getItemGroup(req, res) {
   try {
-    const id = req.params.id;
-    const query = await conection.execute(
-      `SELECT * FROM item_group WHERE company = ? ORDER BY 1 DESC`,
-      [id]
-    );
-    if (query) {
-      res.status(httpStatus.OK).json({
-        data: query[0],
-        module: Module,
-      });
-    }
+    const companyId = req.params.id;
+    const items = await ItemGroup.findAll({
+      where: { company: companyId },
+      order: [["id", "DESC"]],
+    });
+
+    res.status(httpStatus.OK).json({
+      data: items,
+      module: Module,
+    });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: `Error interno en el servidor: ${error}`,
+      message: `Error interno en el servidor: ${error.message}`,
       module: Module,
     });
   }
@@ -50,13 +45,11 @@ async function getItemGroup(req, res) {
 async function getOneItemGroup(req, res) {
   try {
     const id = req.params.id;
-    const itemGroup = await conection.execute(
-      `SELECT * FROM item_group WHERE id = ?`,
-      [id]
-    );
-    if (itemGroup.length > 0) {
+    const item = await ItemGroup.findByPk(id);
+
+    if (item) {
       res.status(httpStatus.OK).json({
-        data: itemGroup,
+        data: item,
         module: Module,
       });
     } else {
@@ -66,9 +59,9 @@ async function getOneItemGroup(req, res) {
       });
     }
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: `Error interno en el servidor: ${error}`,
+      message: `Error interno en el servidor: ${error.message}`,
       module: Module,
     });
   }
@@ -79,20 +72,28 @@ async function updateItemGroup(req, res) {
     const { name, state } = req.body;
     const id = req.params.id;
 
-    const update = conection.execute(
-      `UPDATE item_group SET name=?, state=? WHERE id=?`,
-      [name, state, id]
+    const [updated] = await ItemGroup.update(
+      { name, state },
+      { where: { id } }
     );
-    if (update) {
+
+    if (updated) {
+      const updatedItem = await ItemGroup.findByPk(id);
       res.status(httpStatus.OK).json({
-        message: "registro actualizado",
+        message: "Registro actualizado",
+        module: Module,
+        data: updatedItem,
+      });
+    } else {
+      res.status(httpStatus.NOT_FOUND).json({
+        message: "Item no encontrado",
         module: Module,
       });
     }
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: `Error interno en el servidor: ${error}`,
+      message: `Error interno en el servidor: ${error.message}`,
       module: Module,
     });
   }
@@ -101,21 +102,23 @@ async function updateItemGroup(req, res) {
 async function deleteItemGroup(req, res) {
   try {
     const id = req.params.id;
+    const deleted = await ItemGroup.destroy({ where: { id } });
 
-    const deleteItem = conection.execute(`DELETE FROM item_group WHERE id=?`, [
-      id,
-    ]);
-
-    if (deleteItem) {
+    if (deleted) {
       res.status(httpStatus.OK).json({
-        message: "Registro eliminado.",
+        message: "Registro eliminado",
+        module: Module,
+      });
+    } else {
+      res.status(httpStatus.NOT_FOUND).json({
+        message: "Item no encontrado",
         module: Module,
       });
     }
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: `Error interno en el servidor: ${error}`,
+      message: `Error interno en el servidor: ${error.message}`,
       module: Module,
     });
   }

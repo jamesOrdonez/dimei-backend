@@ -1,24 +1,32 @@
-// * Conexion a la BD
-const mysql = require("mysql2/promise");
+const { Sequelize } = require("sequelize");
 
-const connection = mysql.createPool({
-  host: "45.79.25.250",
-  user: "pirata",
-  password: "Qwerty38/*Pass",
-  database: "dimei",
-  port: 3306,
-});
+const sequelize = new Sequelize(
+  process.env.DB_NAME,
+  process.env.DB_USER,
+  process.env.DB_PASSWORD,
+  {
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT || 3306,
+    dialect: "mysql",
+    logging: false,
+    pool: {
+      max: 10,
+      min: 0,
+      acquire: 30000,
+      idle: 10000,
+    },
+  }
+);
 
 async function testConnection() {
   try {
-    const conn = await connection.getConnection();
-    console.log("🟢 Conectado correctamente a la base de datos");
-    conn.release();
+    await sequelize.authenticate();
+    console.log("Conectado a la bd");
   } catch (error) {
-    console.error("🔴 Error conectando a la base de datos:", error.message);
+    console.error("Error conectando a la base de datos:", error.message);
   }
 }
 
 testConnection();
 
-module.exports = connection;
+module.exports = sequelize;

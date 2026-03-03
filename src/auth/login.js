@@ -1,72 +1,62 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-const conection = require("../db/conection");
 const httpStatus = require("http-status");
-const Module = "login";
+
+const User = require("../models/user");
+const Company = require("../models/company");
 
 async function login(req, res) {
   try {
     const { user, password } = req.body;
 
-    // Validación de campos
     if (!user || !password) {
       return res.status(httpStatus.BAD_REQUEST).json({
         message: "Usuario y contraseña obligatorios",
       });
     }
 
-    // Consulta a la BD
-    const [query] = await conection.execute(
-      `SELECT *,u.id as userId FROM user u 
-       JOIN company c ON c.id = u.company 
-       WHERE u.state = 1 AND u.user = ?`,
-      [user]
-    );
+    const dbUser = await User.findOne({
+      where: { user, state: true },
+      include: [
+        { model: Company, attributes: ["id", "name"] }
+      ]
+    });
 
-    // Validar usuario encontrado
-    if (query.length === 0) {
+    if (!dbUser) {
       return res.status(httpStatus.NOT_FOUND).json({
         message: "Usuario no encontrado",
       });
     }
 
-    const data = query[0];
-
-    // Validación contraseña
-    const isValidPassword = await bcrypt.compare(password, data.password);
-
+    const isValidPassword = await bcrypt.compare(password, dbUser.password);
     if (!isValidPassword) {
       return res.status(httpStatus.UNAUTHORIZED).json({
         message: "Contraseña incorrecta",
       });
     }
 
-    // Crear token
-    const token = jwt.sign(
-      {
-        userId: data.id,
-        user: data.user,
-        rolId: data.rol,
-        company: data.company,
-      },
-      "super_secret",
-      { expiresIn: "8h" }
-    );
+    const token = jwt.sign({
+      userId: dbUser.id,
+      user: dbUser.user,
+      rolId: dbUser.rol,
+      company: dbUser.company,
+    }, "super_secret", { expiresIn: "8h" });
 
     return res.status(httpStatus.OK).json({
       token,
-      userId: data.id,
-      user: data.user,
-      userId: data.userId,
-      rolId: data.rol,
-      company: data.company,
+      userId: dbUser.id,
+      user: dbUser.user,
+      rolId: dbUser.rol,
+      company: dbUser.company,
+      companyName: dbUser.Company?.name || null
     });
+
   } catch (error) {
     console.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: `Error interno en el servidor`,
+      message: "Error interno en el servidor",
       error: error.message,
-      module: Module,
+      module: "login",
     });
   }
 }

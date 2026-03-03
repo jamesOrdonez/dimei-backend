@@ -1,27 +1,30 @@
-const conection = require("../db/conection");
 const httpStatus = require("http-status");
+const sequelize = require("../db/conection");
+
+const Remision = require("../models/remision");
+const Item = require("../models/item");
+const RemisionItem = require("../models/remision_item");
+
 const Module = "remision";
 
 async function save(req, res) {
-    let connection;
+    const t = await sequelize.transaction();
 
     try {
         const { description, net_items, company, fkUser } = req.body;
-        connection = await conection.getConnection();
-
-        await connection.beginTransaction();
 
         let erroresStock = [];
 
         for (const item of net_items) {
             const { id, quantity } = item;
 
-            const [rows] = await connection.execute(
-                `SELECT amount, description FROM item WHERE id = ? FOR UPDATE`,
-                [id]
-            );
+            const dbItem = await Item.findOne({
+                where: { id },
+                transaction: t,
+                lock: true,
+            });
 
-            if (rows.length === 0) {
+            if (!dbItem) {
                 erroresStock.push({
                     id,
                     description: `ID ${id}`,
@@ -32,8 +35,8 @@ async function save(req, res) {
                 continue;
             }
 
-            const cantidadDisponible = Number(rows[0].amount)
-            const nombreItem = rows[0].description || `ID ${id}`;
+            const cantidadDisponible = Number(dbItem.amount);
+            const nombreItem = dbItem.description || `ID ${id}`;
             const cantidadSolicitada = Number(quantity);
 
             if (cantidadSolicitada > cantidadDisponible) {
@@ -48,54 +51,60 @@ async function save(req, res) {
         }
 
         if (erroresStock.length > 0) {
-            await connection.rollback();
-
+            await t.rollback();
             return res.status(400).json({
                 message: "Algunos items no tienen stock suficiente",
                 errors: erroresStock,
             });
         }
 
-        const [saveRemision] = await connection.execute(
-            `INSERT INTO ${Module} (description, fkUser, company) VALUES (?,?,?)`,
-            [description, fkUser, company]
+        const remision = await Remision.create(
+            {
+                description,
+                fkUser,
+                company,
+            },
+            { transaction: t }
         );
-
-        const remisionId = saveRemision.insertId;
 
         for (const item of net_items) {
             const { id, quantity } = item;
 
-            await connection.execute(
-                `INSERT INTO ${Module}_item (fk_item, quantity, fk_remision, fkUser)
-         VALUES (?,?,?,?)`,
-                [id, quantity, remisionId, fkUser]
+            await RemisionItem.create(
+                {
+                    fk_item: id,
+                    quantity,
+                    fk_remision: remision.id,
+                    fkUser,
+                },
+                { transaction: t }
             );
 
-            await connection.execute(
-                `UPDATE item SET amount = amount - ? WHERE id = ?`,
-                [quantity, id]
+            await Item.update(
+                { amount: sequelize.literal(`amount - ${quantity}`) },
+                {
+                    where: { id },
+                    transaction: t,
+                }
             );
         }
 
-        await connection.commit();
+        await t.commit();
 
-        return res.status(200).json({
+        return res.status(httpStatus.OK).json({
             message: "Remisión guardada correctamente",
-            remisionId,
+            remisionId: remision.id,
         });
 
     } catch (error) {
-        if (connection) await connection.rollback();
+        await t.rollback();
 
         console.error("Error interno en el servidor:", error);
-        return res.status(500).json({
+
+        return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
             message: "Error interno en el servidor",
             error: error.message,
         });
-
-    } finally {
-        if (connection) connection.release();
     }
 }
 
