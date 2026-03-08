@@ -13,6 +13,7 @@ const Company = require("./v1/company.routes");
 const Equipmenttype = require("./v1/equipmentType.routes");
 const unitOfMeasuremet = require("./v1/unitOfMeasuremet.routes");
 const remision = require("./v1/remision.routes")
+const clients = require("./v1/client.routes")
 
 routes.use(User);
 routes.use(Login);
@@ -26,5 +27,6 @@ routes.use(Company);
 routes.use(Equipmenttype);
 routes.use(unitOfMeasuremet);
 routes.use(remision);
+routes.use(clients);
 
 module.exports = routes;
