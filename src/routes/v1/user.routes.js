@@ -13,7 +13,7 @@ router
   .get("/getOneUser/:id", protectedRoute(options), userController.getOneUser)
   .put("/updateUser/:id", protectedRoute(options), userController.updateuser)
   .delete(
-    "/deleteuser/:id",
+    "/deleteUser/:id",
     protectedRoute(options),
     userController.deleteUser
   );
