@@ -51,21 +51,50 @@ async function getOneProduct(req, res) {
 
 async function saveproduct(req, res) {
   try {
-    const { name, description, user, company } = req.body;
+    const {
+      name,
+      description,
+      group_item,
+      net_items,
+      state,
+      fkUser,
+      company
+    } = req.body;
 
-    const newProduct = await Product.create({ name, description, user, company });
+    const newProduct = await Product.create({
+      name,
+      description,
+      group_item,
+      state,
+      fkUser,
+      company
+    });
+
+    if (net_items && net_items.length > 0) {
+
+      const items = net_items.map(item => ({
+        product: newProduct.id,
+        item: item.id,
+        quantity: item.quantity,
+        company: company
+      }));
+
+      await ItemProduct.bulkCreate(items);
+    }
 
     res.status(httpStatus.CREATED).json({
       message: "Registro creado",
       data: { id: newProduct.id },
-      module: ModuleName,
+      module: ModuleName
     });
+
   } catch (error) {
     console.error(error);
+
     res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
       message: "Error interno en el servidor",
       error: error.message,
-      module: ModuleName,
+      module: ModuleName
     });
   }
 }

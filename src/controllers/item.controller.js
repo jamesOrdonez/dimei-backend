@@ -34,8 +34,8 @@ async function getItems(req, res) {
       where: { company: companyId },
       order: [["id", "DESC"]],
       include: [
-        { model: ItemGroup, attributes: ["id", "name"], as: "ItemGroup" }, // alias corregido
-        { model: UnitOfMeasure, attributes: ["id", "unitOfMeasure"], as: "UnitOfMeasure" }, // alias correcto según modelo
+        { model: ItemGroup, attributes: ["id", "name"], as: "ItemGroup" },
+        { model: UnitOfMeasure, attributes: ["id", "unitOfMeasure"], as: "UnitOfMeasure" },
       ],
     });
 
