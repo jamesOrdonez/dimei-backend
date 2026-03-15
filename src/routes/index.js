@@ -12,8 +12,11 @@ const Item_Product = require("./v1/item_product.routes");
 const Company = require("./v1/company.routes");
 const Equipmenttype = require("./v1/equipmentType.routes");
 const unitOfMeasuremet = require("./v1/unitOfMeasuremet.routes");
-const remision = require("./v1/remision.routes")
-const clients = require("./v1/client.routes")
+const remision = require("./v1/remision.routes");
+const clients = require("./v1/client.routes");
+const elevatorType = require("./v1/elevatorType.routes");
+const typeDriveSystem = require("./v1/typeDriveSystem.routes");
+const proyect = require("./v1/proyect.routes");
 
 routes.use(User);
 routes.use(Login);
@@ -28,5 +31,8 @@ routes.use(Equipmenttype);
 routes.use(unitOfMeasuremet);
 routes.use(remision);
 routes.use(clients);
+routes.use(elevatorType);
+routes.use(typeDriveSystem);
+routes.use(proyect);
 
 module.exports = routes;
