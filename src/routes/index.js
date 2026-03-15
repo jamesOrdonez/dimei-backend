@@ -17,6 +17,7 @@ const clients = require("./v1/client.routes");
 const elevatorType = require("./v1/elevatorType.routes");
 const typeDriveSystem = require("./v1/typeDriveSystem.routes");
 const proyect = require("./v1/proyect.routes");
+const product_proyect = require("./v1/product_proyect.routes");
 
 routes.use(User);
 routes.use(Login);
@@ -34,5 +35,6 @@ routes.use(clients);
 routes.use(elevatorType);
 routes.use(typeDriveSystem);
 routes.use(proyect);
+routes.use(product_proyect);
 
 module.exports = routes;
