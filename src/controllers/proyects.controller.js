@@ -85,7 +85,47 @@ async function getProject(req, res) {
   }
 }
 
+async function getOneProject(req, res) {
+  try {
+    const id = req.params.id;
+
+    const projects = await model.findAll({
+      where: { id: id },
+      order: [["id", "DESC"]],
+      include: [
+        {
+          model: ElevatorType,
+          attributes: ["id", "elevatorType"],
+          as: "elevatorTypeData",
+        },
+        {
+          model: TypeDriveSystem,
+          attributes: ["id", "typeDriveSystem"],
+          as: "driveSystemData",
+        },
+        {
+          model: Client,
+          attributes: ["id", "nombre"],
+          as: "customerData",
+        },
+      ],
+    });
+
+    res.status(httpStatus.OK).json({
+      data: projects,
+      Module,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: `Error interno en el servidor: ${error}`,
+      Module,
+    });
+  }
+}
+
 module.exports = {
   save,
   getProject,
+  getOneProject,
 };
