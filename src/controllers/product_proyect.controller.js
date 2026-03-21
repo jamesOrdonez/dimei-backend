@@ -15,7 +15,7 @@ async function save(req, res) {
     const dataToInsert = products.map((p) => ({
       proyect: projectId,
       product: p.id,
-      quantity
+      quantity: p.quantity,
     }));
 
     const saved = await model.bulkCreate(dataToInsert);
