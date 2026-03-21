@@ -51,32 +51,17 @@ async function getOneProduct(req, res) {
 
 async function saveproduct(req, res) {
   try {
-    const {
-      name,
-      description,
-      group_item,
-      net_items,
-      state,
-      fkUser,
-      company
-    } = req.body;
+    const data = req.body;
 
-    const newProduct = await Product.create({
-      name,
-      description,
-      group_item,
-      state,
-      fkUser,
-      company
-    });
+    const newProduct = await Product.create(data);
 
-    if (net_items && net_items.length > 0) {
+    if (data.net_items && data.net_items.length > 0) {
 
-      const items = net_items.map(item => ({
+      const items = data.net_items.map(item => ({
         product: newProduct.id,
         item: item.id,
         quantity: item.quantity,
-        company: company
+        company: data.company
       }));
 
       await ItemProduct.bulkCreate(items);
@@ -102,10 +87,9 @@ async function saveproduct(req, res) {
 async function updateProduct(req, res) {
   try {
     const id = req.params.id;
-    const { name, description } = req.body;
+    const data = req.body;
 
-    const [updated] = await Product.update(
-      { name, description },
+    const [updated] = await Product.update(data,
       { where: { id } }
     );
 
