@@ -4,25 +4,24 @@ const Module = "item_proyect";
 
 async function save(req, res) {
   try {
-    const { projectId } = req.body;
+    const { projectId, products, quantity } = req.body;
 
-    const items = parseProducts(req.body);
-
-    const saved = await model.create({
-      projectId
-    });
-
-    if (items.length > 0) {
-      const dataToInsert = items.map((p) => ({
-        productId: p.id,
-        projectId: saved.id,
-      }));
-
-      await ProductModel.bulkCreate(dataToInsert);
+    if (!products || products.length === 0) {
+      return res.status(400).json({
+        message: "No hay productos para guardar",
+      });
     }
 
+    const dataToInsert = products.map((p) => ({
+      proyect: projectId,
+      product: p.id,
+      quantity
+    }));
+
+    const saved = await model.bulkCreate(dataToInsert);
+
     res.status(200).json({
-      message: "Registro creado",
+      message: "Registros creados",
       data: saved,
     });
 
@@ -33,7 +32,6 @@ async function save(req, res) {
     });
   }
 }
-
 
 async function getItemProyect(req, res) {
   try {

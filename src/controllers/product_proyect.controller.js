@@ -4,25 +4,24 @@ const Module = "product_proyect";
 
 async function save(req, res) {
   try {
-    const { projectId } = req.body;
+    const { projectId, item, quantity } = req.body;
 
-    const products = parseProducts(req.body);
-
-    const saved = await model.create({
-      projectId,
-    });
-
-    if (products.length > 0) {
-      const dataToInsert = products.map((p) => ({
-        productId: p.id,
-        projectId: saved.id,
-      }));
-
-      await ProductModel.bulkCreate(dataToInsert);
+    if (!products || products.length === 0) {
+      return res.status(400).json({
+        message: "No hay productos para guardar",
+      });
     }
 
+    const dataToInsert = products.map((p) => ({
+      proyect: projectId,
+      item: p.id,
+      quantity
+    }));
+
+    const saved = await model.bulkCreate(dataToInsert);
+
     res.status(200).json({
-      message: "Registro creado",
+      message: "Registros creados",
       data: saved,
     });
 
