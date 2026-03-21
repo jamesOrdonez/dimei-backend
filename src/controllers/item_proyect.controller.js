@@ -4,17 +4,17 @@ const Module = "item_proyect";
 
 async function save(req, res) {
   try {
-    const { projectId, products, quantity } = req.body;
+    const { projectId, items, quantity } = req.body;
 
-    if (!products || products.length === 0) {
+    if (!items || items.length === 0) {
       return res.status(400).json({
         message: "No hay productos para guardar",
       });
     }
 
-    const dataToInsert = products.map((p) => ({
+    const dataToInsert = items.map((p) => ({
       proyect: projectId,
-      product: p.id,
+      item: p.id,
       quantity
     }));
 

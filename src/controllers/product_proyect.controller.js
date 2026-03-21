@@ -4,7 +4,7 @@ const Module = "product_proyect";
 
 async function save(req, res) {
   try {
-    const { projectId, item, quantity } = req.body;
+    const { projectId, products, quantity } = req.body;
 
     if (!products || products.length === 0) {
       return res.status(400).json({
@@ -14,7 +14,7 @@ async function save(req, res) {
 
     const dataToInsert = products.map((p) => ({
       proyect: projectId,
-      item: p.id,
+      products: p.id,
       quantity
     }));
 
