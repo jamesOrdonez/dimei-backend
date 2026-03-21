@@ -24,6 +24,7 @@ async function getGroupProducts(req, res) {
     try {
         const companyId = req.params.id;
         const groupProducts = await model.findAll({
+            where: { company: companyId },
             order: [["id", "DESC"]],
         });
         res.status(httpStatus.OK).json({ data: groupProducts, module: Module });
