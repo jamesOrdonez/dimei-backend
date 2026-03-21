@@ -14,7 +14,7 @@ async function save(req, res) {
 
     const dataToInsert = products.map((p) => ({
       proyect: projectId,
-      products: p.id,
+      product: p.id,
       quantity
     }));
 
