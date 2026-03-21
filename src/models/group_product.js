@@ -15,6 +15,10 @@ const group_product = sequelize.define('group_product', {
     state: {
         type: DataTypes.TINYINT,
         allowNull: true
+    },
+    company: {
+        type: DataTypes.INTEGER,
+        allowNull: true
     }
 }, {
     freezeTableName: true,
