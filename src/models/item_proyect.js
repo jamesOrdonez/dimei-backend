@@ -1,5 +1,6 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../db/conection");
+const Item = require("../models/item");
 
 const item_proyect = sequelize.define(
   "item_proyect",
@@ -10,7 +11,7 @@ const item_proyect = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
-    product: {
+    item: {
       type: DataTypes.INTEGER,
       allowNull: true,
     },
@@ -28,5 +29,10 @@ const item_proyect = sequelize.define(
     timestamps: false,
   },
 );
+
+item_proyect.belongsTo(Item, {
+  foreignKey: "item",
+  as: "itemData",
+});
 
 module.exports = item_proyect;

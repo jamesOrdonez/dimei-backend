@@ -71,9 +71,14 @@ Proyect.belongsTo(Customer, {
   as: "customerData",
 });
 
-Proyect.belongsTo(product_proyect, {
-  foreignKey: "id",
+Proyect.hasMany(product_proyect, {
+  foreignKey: "proyect",
   as: "productProyect"
+});
+
+Proyect.hasMany(item_proyect, {
+  foreignKey: "proyect",
+  as: "itemProyect"
 });
 
 module.exports = Proyect;

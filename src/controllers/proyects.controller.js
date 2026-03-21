@@ -7,6 +7,8 @@ const { col } = require("sequelize");
 const Client = require("../models/clients");
 const product_proyect = require("../models/product_proyect")
 const item_proyect = require("../models/item_proyect");
+const Product = require("../models/product");
+const Item = require("../models/item");
 
 //* id del item/producto, nombre, cantidad, grupo
 
@@ -115,13 +117,63 @@ async function getOneProject(req, res) {
         {
           model: product_proyect,
           attributes: ["id", "quantity"],
-          as: "productProyect"
-        }
+          as: "productProyect",
+          include: [
+            {
+              model: Product,
+              attributes: ["id", "name"],
+              as: "productData",
+            },
+          ],
+        },
+        {
+          model: item_proyect,
+          attributes: ["id", "quantity"],
+          as: "itemProyect",
+          include: [
+            {
+              model: Item,
+              attributes: ["id", "description"],
+              as: "itemData",
+            },
+          ],
+        },
       ],
     });
 
+    const formattedProjects = projects.map((project) => {
+      const data = project.toJSON();
+      const {
+        elevatorTypeData,
+        driveSystemData,
+        customerData,
+        productProyect,
+        itemProyect,
+        ...rest
+      } = data;
+
+      return {
+        ...rest,
+        elevatorType: elevatorTypeData?.elevatorType || null,
+        typeDriveSystem: driveSystemData?.typeDriveSystem || null,
+        customer: customerData?.nombre || null,
+        products: (productProyect || []).map((pp) => ({
+          id: pp.id,
+          product_id: pp.productData?.id,
+          product_name: pp.productData?.name,
+          quantity: pp.quantity,
+        })),
+        items: (itemProyect || []).map((ip) => ({
+          id: ip.id,
+          item_id: ip.itemData?.id,
+          item_name: ip.itemData?.description,
+          quantity: ip.quantity,
+        })),
+      };
+    });
+
     res.status(httpStatus.OK).json({
-      data: projects,
+      data: formattedProjects,
       Module,
     });
   } catch (error) {
