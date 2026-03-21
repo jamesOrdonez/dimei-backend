@@ -6,14 +6,14 @@ async function save(req, res) {
   try {
     const { projectId } = req.body;
 
-    const products = parseProducts(req.body);
+    const items = parseProducts(req.body);
 
     const saved = await model.create({
       projectId
     });
 
-    if (products.length > 0) {
-      const dataToInsert = products.map((p) => ({
+    if (items.length > 0) {
+      const dataToInsert = items.map((p) => ({
         productId: p.id,
         projectId: saved.id,
       }));

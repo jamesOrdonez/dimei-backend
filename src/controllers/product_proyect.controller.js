@@ -4,20 +4,32 @@ const Module = "product_proyect";
 
 async function save(req, res) {
   try {
-    const data = req.body;
-    const saved = await model.create(data);
+    const { projectId } = req.body;
 
-    if (saved) {
-      res.status(httpStatus.OK).json({
-        message: "Registro creado",
-        Module,
-      });
+    const products = parseProducts(req.body);
+
+    const saved = await model.create({
+      projectId,
+    });
+
+    if (products.length > 0) {
+      const dataToInsert = products.map((p) => ({
+        productId: p.id,
+        projectId: saved.id,
+      }));
+
+      await ProductModel.bulkCreate(dataToInsert);
     }
+
+    res.status(200).json({
+      message: "Registro creado",
+      data: saved,
+    });
+
   } catch (error) {
     console.error(error);
-    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+    res.status(500).json({
       message: `Error interno en el servidor: ${error}`,
-      Module,
     });
   }
 }
