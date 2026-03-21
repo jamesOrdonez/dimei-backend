@@ -27,7 +27,15 @@ async function getproduct(req, res) {
 async function getOneProduct(req, res) {
   try {
     const id = req.params.id;
-    const product = await Product.findByPk(id);
+    const product = await Product.findByPk(id, {
+      include: [
+        {
+          model: ItemProduct,
+          attributes: [['item', 'id'], 'quantity'],
+          as: 'productItem'
+        }
+      ]
+    });
 
     if (!product) {
       return res.status(httpStatus.NOT_FOUND).json({

@@ -9,7 +9,7 @@ const options = {
 
 router
   .get("/getProduct/:id", protectedRoute(options), controller.getproduct)
-  .get("/getOneproduct/:id", protectedRoute(options), controller.getOneProduct)
+  .get("/getOneproduct/:id", controller.getOneProduct)
   .post("/saveProduct", protectedRoute(options), controller.saveproduct)
   .put("/updateProduct/:id", protectedRoute(options), controller.updateProduct)
   .delete(
