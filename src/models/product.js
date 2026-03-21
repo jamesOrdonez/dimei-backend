@@ -9,6 +9,7 @@ const Product = sequelize.define(
         description: { type: DataTypes.STRING, allowNull: true },
         user: { type: DataTypes.INTEGER, allowNull: true },
         company: { type: DataTypes.INTEGER, allowNull: false },
+        fk_group_product: { type: DataTypes.INTEGER, allowNull: true },
     },
     {
         tableName: "product",
