@@ -3,6 +3,8 @@ const sequelize = require("../db/conection");
 const ElevatorType = require("./elevatorType");
 const TypeDriveSystem = require("./typeDriveSystem");
 const Customer = require("./clients");
+const product_proyect = require("../models/product_proyect");
+const item_proyect = require("../models/item_proyect");
 
 const Proyect = sequelize.define(
   "proyect",
@@ -67,6 +69,11 @@ Proyect.belongsTo(TypeDriveSystem, {
 Proyect.belongsTo(Customer, {
   foreignKey: "customerId",
   as: "customerData",
+});
+
+Proyect.belongsTo(product_proyect, {
+  foreignKey: "id",
+  as: "productProyect"
 });
 
 module.exports = Proyect;

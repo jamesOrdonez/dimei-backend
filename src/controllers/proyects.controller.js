@@ -5,6 +5,10 @@ const TypeDriveSystem = require("../models/typeDriveSystem");
 const Module = "proyect";
 const { col } = require("sequelize");
 const Client = require("../models/clients");
+const product_proyect = require("../models/product_proyect")
+const item_proyect = require("../models/item_proyect");
+
+//* id del item/producto, nombre, cantidad, grupo
 
 async function save(req, res) {
   try {
@@ -108,6 +112,11 @@ async function getOneProject(req, res) {
           attributes: ["id", "nombre"],
           as: "customerData",
         },
+        {
+          model: product_proyect,
+          attributes: ["id", "quantity"],
+          as: "productProyect"
+        }
       ],
     });
 

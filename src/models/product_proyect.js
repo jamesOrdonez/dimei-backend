@@ -1,5 +1,6 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../db/conection");
+const proyect = require("../models/proyect");
 
 const product_proyect = sequelize.define(
   "product_proyect",
