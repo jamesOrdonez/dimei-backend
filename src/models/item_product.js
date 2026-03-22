@@ -1,5 +1,6 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../db/conection");
+const Item = require("./item");
 
 const ItemProduct = sequelize.define("ItemProduct", {
     id: {
@@ -27,5 +28,8 @@ const ItemProduct = sequelize.define("ItemProduct", {
     tableName: "item_product",
     timestamps: false,
 });
+
+ItemProduct.belongsTo(Item, { foreignKey: "item", as: "itemData" });
+Item.hasMany(ItemProduct, { foreignKey: "item", as: "productItems" });
 
 module.exports = ItemProduct;
