@@ -308,7 +308,8 @@ async function getInventoryComparison(req, res) {
         total_inventory: amount,
         separated_inventory: separated,
         available_inventory: amount - separated,
-        category: it.group_item
+        category: it.group_item,
+        price: it.price || 0
       };
     });
 
