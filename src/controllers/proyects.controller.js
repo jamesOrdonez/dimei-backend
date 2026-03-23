@@ -9,6 +9,7 @@ const product_proyect = require("../models/product_proyect")
 const item_proyect = require("../models/item_proyect");
 const Product = require("../models/product");
 const Item = require("../models/item");
+const ItemProduct = require("../models/item_product");
 
 //* id del item/producto, nombre, cantidad, grupo
 
@@ -123,6 +124,19 @@ async function getOneProject(req, res) {
               model: Product,
               attributes: ["id", "name"],
               as: "productData",
+              include: [
+                {
+                  model: ItemProduct,
+                  as: "productItem",
+                  include: [
+                    {
+                      model: Item,
+                      attributes: ["id", "description", "price"],
+                      as: "itemData",
+                    },
+                  ],
+                },
+              ],
             },
           ],
         },
@@ -133,7 +147,7 @@ async function getOneProject(req, res) {
           include: [
             {
               model: Item,
-              attributes: ["id", "description"],
+              attributes: ["id", "description", "price"],
               as: "itemData",
             },
           ],
@@ -157,18 +171,42 @@ async function getOneProject(req, res) {
         elevatorType: elevatorTypeData?.elevatorType || null,
         typeDriveSystem: driveSystemData?.typeDriveSystem || null,
         customer: customerData?.nombre || null,
-        products: (productProyect || []).map((pp) => ({
-          id: pp.id,
-          product_id: pp.productData?.id,
-          product_name: pp.productData?.name,
-          quantity: pp.quantity,
-        })),
-        items: (itemProyect || []).map((ip) => ({
-          id: ip.id,
-          item_id: ip.itemData?.id,
-          item_name: ip.itemData?.description,
-          quantity: ip.quantity,
-        })),
+        products: (productProyect || []).map((pp) => {
+          const productItems = pp.productData?.productItem || [];
+          const itemsData = productItems.map(pi => {
+            const price = pi.itemData?.price || 0;
+            const quantity = pi.quantity || 0;
+            return {
+              item_id: pi.itemData?.id,
+              item_name: pi.itemData?.description,
+              quantity: quantity,
+              price: price,
+              total: quantity * price
+            };
+          });
+          const productTotal = itemsData.reduce((acc, curr) => acc + curr.total, 0);
+
+          return {
+            id: pp.id,
+            product_id: pp.productData?.id,
+            product_name: pp.productData?.name,
+            quantity: pp.quantity,
+            total_price: productTotal, // Mide el precio unitario del producto basado en sus componentes
+            items: itemsData
+          };
+        }),
+        items: (itemProyect || []).map((ip) => {
+          const price = ip.itemData?.price || 0;
+          const quantity = ip.quantity || 0;
+          return {
+            id: ip.id,
+            item_id: ip.itemData?.id,
+            item_name: ip.itemData?.description,
+            quantity: quantity,
+            price: price,
+            total: quantity * price
+          };
+        }),
       };
     });
 
