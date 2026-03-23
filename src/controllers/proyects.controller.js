@@ -223,8 +223,112 @@ async function getOneProject(req, res) {
   }
 }
 
+async function getInventoryComparison(req, res) {
+  try {
+    const companyId = req.params.company;
+
+    // 1. Get all items for the company
+    const items = await Item.findAll({
+      where: { company: companyId },
+      raw: true,
+    });
+
+    // 2. Get separated items directly tied to projects
+    const separatedItems = await item_proyect.findAll({
+      include: [
+        {
+          model: Item,
+          as: "itemData",
+          where: { company: companyId },
+          attributes: []
+        }
+      ],
+      raw: true,
+    });
+
+    // 3. Get separated products tied to projects, and their items
+    const separatedProducts = await product_proyect.findAll({
+      include: [
+        {
+          model: Product,
+          as: "productData",
+          where: { company: companyId },
+          attributes: ["id"],
+        }
+      ],
+      raw: true,
+    });
+
+    // To compute items separated by products, we need product items mapping
+    const productItemsData = await ItemProduct.findAll({
+      where: { company: companyId },
+      raw: true,
+    });
+
+    // Group product items by product ID
+    const productItemMap = {};
+    productItemsData.forEach(pi => {
+      if (!productItemMap[pi.product]) {
+        productItemMap[pi.product] = [];
+      }
+      productItemMap[pi.product].push(pi);
+    });
+
+    // Calculate separated quantity per item
+    const separatedPerItem = {};
+
+    // 2a. Add direct items
+    separatedItems.forEach(si => {
+      if (!separatedPerItem[si.item]) separatedPerItem[si.item] = 0;
+      separatedPerItem[si.item] += (si.quantity || 0);
+    });
+
+    // 3a. Add items via products
+    separatedProducts.forEach(sp => {
+      const prodId = sp.product;
+      const projQty = sp.quantity || 0;
+      const itemsInProd = productItemMap[prodId] || [];
+      
+      itemsInProd.forEach(pi => {
+        const itemQtyPerProduct = pi.quantity || 0;
+        const totalItemsSeparated = projQty * itemQtyPerProduct;
+        
+        if (!separatedPerItem[pi.item]) separatedPerItem[pi.item] = 0;
+        separatedPerItem[pi.item] += totalItemsSeparated;
+      });
+    });
+
+    // Map the result
+    const comparison = items.map(it => {
+      const separated = separatedPerItem[it.id] || 0;
+      const amount = it.amount || 0;
+      return {
+        id: it.id,
+        item_name: it.description,
+        total_inventory: amount,
+        separated_inventory: separated,
+        available_inventory: amount - separated,
+        category: it.group_item
+      };
+    });
+
+    res.status(httpStatus.OK).json({
+      data: comparison,
+      Module
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: `Error interno en el servidor: ${error}`,
+      Module,
+    });
+  }
+}
+
 module.exports = {
   save,
   getProject,
   getOneProject,
+  getInventoryComparison,
 };
