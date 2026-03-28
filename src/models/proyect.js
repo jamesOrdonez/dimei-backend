@@ -47,6 +47,11 @@ const Proyect = sequelize.define(
       type: DataTypes.FLOAT,
       allowNull: false,
     },
+    state: {
+      type: DataTypes.ENUM("Creado", "Iniciado", "Finalizado", "Cancelado"),
+      allowNull: false,
+      defaultValue: "Creado",
+    },
   },
   {
     freezeTableName: true,
