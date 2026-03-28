@@ -15,7 +15,29 @@ async function save(req, res) {
     const t = await sequelize.transaction();
 
     try {
-        const { description, company, fkUser, fk_proyect, net_products, net_items } = req.body;
+        let { description, company, fkUser, fk_proyect, net_products, net_items } = req.body;
+
+        // Agrupar productos duplicados por ID sumando sus cantidades
+        if (net_products && Array.isArray(net_products)) {
+            const aggregated = net_products.reduce((acc, p) => {
+                const id = Number(p.id);
+                if (!acc[id]) acc[id] = 0;
+                acc[id] += Number(p.quantity || 0);
+                return acc;
+            }, {});
+            net_products = Object.entries(aggregated).map(([id, quantity]) => ({ id: Number(id), quantity }));
+        }
+
+        // Agrupar ítems duplicados por ID sumando sus cantidades
+        if (net_items && Array.isArray(net_items)) {
+            const aggregated = net_items.reduce((acc, i) => {
+                const id = Number(i.id);
+                if (!acc[id]) acc[id] = 0;
+                acc[id] += Number(i.quantity || 0);
+                return acc;
+            }, {});
+            net_items = Object.entries(aggregated).map(([id, quantity]) => ({ id: Number(id), quantity }));
+        }
 
         // 1. Obtener datos del proyecto para cálculos de variables
         const project = await Proyect.findByPk(fk_proyect, { transaction: t });
