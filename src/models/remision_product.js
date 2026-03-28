@@ -1,15 +1,19 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../db/conection");
 
-const RemisionItem = sequelize.define("RemisionItem", {
-
+const RemisionProduct = sequelize.define("RemisionProduct", {
     id: {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true,
     },
 
-    fk_item: {
+    fk_remision: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+    },
+
+    fk_product: {
         type: DataTypes.INTEGER,
         allowNull: false,
     },
@@ -19,24 +23,15 @@ const RemisionItem = sequelize.define("RemisionItem", {
         allowNull: false,
     },
 
-    fk_remision: {
-        type: DataTypes.INTEGER,
+    status: {
+        type: DataTypes.ENUM('Completo', 'Pendiente'),
         allowNull: false,
-    },
-
-    fkUser: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-    },
-
-    fk_remision_product: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
+        defaultValue: 'Completo',
     }
 
 }, {
-    tableName: "remision_item",
+    tableName: "remision_product",
     timestamps: false,
 });
 
-module.exports = RemisionItem;
+module.exports = RemisionProduct;
