@@ -327,9 +327,39 @@ async function getInventoryComparison(req, res) {
   }
 }
 
+async function updateState(req, res) {
+  try {
+    const { id } = req.params;
+    const { state } = req.body;
+
+    const updated = await model.update({ state }, {
+      where: { id }
+    });
+
+    if (updated[0] > 0) {
+      res.status(httpStatus.OK).json({
+        message: "Estado del proyecto actualizado",
+        Module,
+      });
+    } else {
+      res.status(httpStatus.NOT_FOUND).json({
+        message: "Proyecto no encontrado o sin cambios",
+        Module,
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: `Error interno en el servidor: ${error}`,
+      Module,
+    });
+  }
+}
+
 module.exports = {
   save,
   getProject,
   getOneProject,
   getInventoryComparison,
+  updateState,
 };
