@@ -7,10 +7,16 @@ const { Op } = require("sequelize");
 const fs = require("fs");
 const path = require("path");
 const uploadsDir = path.join(__dirname, "../../uploads");
+const itemUploadsDir = path.join(uploadsDir, "items");
 
 // Ensure uploads directory exists
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Ensure items uploads directory exists
+if (!fs.existsSync(itemUploadsDir)) {
+  fs.mkdirSync(itemUploadsDir, { recursive: true });
 }
 
 // Crear item
@@ -20,7 +26,7 @@ async function saveItems(req, res) {
     if (req.file) {
       const ext = path.extname(req.file.originalname);
       img = `item-${Date.now()}${ext}`;
-      fs.writeFileSync(path.join(uploadsDir, img), req.file.buffer);
+      fs.writeFileSync(path.join(itemUploadsDir, img), req.file.buffer);
     }
 
     const item = await Item.create({ ...req.body, img });
@@ -105,13 +111,13 @@ async function updateItem(req, res) {
       // Get current item to delete old image
       const currentItem = await Item.findByPk(id);
       if (currentItem && currentItem.img) {
-        const oldPath = path.join(uploadsDir, currentItem.img);
+        const oldPath = path.join(itemUploadsDir, currentItem.img);
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
 
       const ext = path.extname(req.file.originalname);
       const filename = `item-${Date.now()}${ext}`;
-      fs.writeFileSync(path.join(uploadsDir, filename), req.file.buffer);
+      fs.writeFileSync(path.join(itemUploadsDir, filename), req.file.buffer);
       updates.img = filename;
     }
 
@@ -153,7 +159,7 @@ async function deleteItem(req, res) {
     // Get item to delete physical file
     const item = await Item.findByPk(id);
     if (item && item.img) {
-      const filePath = path.join(uploadsDir, item.img);
+      const filePath = path.join(itemUploadsDir, item.img);
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     }
 
@@ -239,7 +245,7 @@ async function getItemImage(req, res) {
 
     if (!item || !item.img) return res.status(404).end();
 
-    const filePath = path.join(uploadsDir, item.img);
+    const filePath = path.join(itemUploadsDir, item.img);
     if (!fs.existsSync(filePath)) return res.status(404).end();
 
     res.setHeader("Cache-Control", "public, max-age=86400");
