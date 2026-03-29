@@ -12,5 +12,9 @@ router
         "/saveRemision",
         remisionController.save,
     )
+    .post(
+        "/completeRemission",
+        remisionController.complete,
+    )
 
 module.exports = router;

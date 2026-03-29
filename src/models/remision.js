@@ -40,6 +40,7 @@ const Remision = sequelize.define("Remision", {
 
 const RemisionItem = require("./remision_item");
 const RemisionProduct = require("./remision_product");
+const Product = require("./product");
 
 Remision.hasMany(RemisionItem, {
     foreignKey: "fk_remision",
@@ -49,6 +50,22 @@ Remision.hasMany(RemisionItem, {
 Remision.hasMany(RemisionProduct, {
     foreignKey: "fk_remision",
     as: "remisionProducts"
+});
+
+// Inverse associations
+RemisionItem.belongsTo(Remision, {
+    foreignKey: "fk_remision",
+    as: "remision"
+});
+
+RemisionProduct.belongsTo(Remision, {
+    foreignKey: "fk_remision",
+    as: "remision"
+});
+
+RemisionProduct.belongsTo(Product, {
+    foreignKey: "fk_product",
+    as: "product"
 });
 
 module.exports = Remision;
