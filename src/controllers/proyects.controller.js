@@ -171,18 +171,39 @@ async function getOneProject(req, res) {
       ]
     });
 
-    // Mapear totales remisionados por producto e ítem
+    // Mapear totales remisionados por producto e ítem agrupando por estado
+    const remittedProductsDetail = {};
+    const remittedItemsDetail = {};
     const remittedProductsTotal = {};
     const remittedItemsTotal = {};
 
     remissions.forEach(rem => {
       (rem.remisionProducts || []).forEach(rp => {
-        remittedProductsTotal[rp.fk_product] = (remittedProductsTotal[rp.fk_product] || 0) + rp.quantity;
+        const id = rp.fk_product;
+        const status = rp.status;
+        const qty = rp.quantity;
+        
+        remittedProductsTotal[id] = (remittedProductsTotal[id] || 0) + qty;
+        
+        if (!remittedProductsDetail[id]) remittedProductsDetail[id] = [];
+        const existing = remittedProductsDetail[id].find(x => x.status === status);
+        if (existing) existing.quantity += qty;
+        else remittedProductsDetail[id].push({ status, quantity: qty });
       });
+
       (rem.remisionItems || []).forEach(ri => {
         // Solo contar ítems directos (sin fk_remision_product)
         if (!ri.fk_remision_product) {
-          remittedItemsTotal[ri.fk_item] = (remittedItemsTotal[ri.fk_item] || 0) + ri.quantity;
+          const id = ri.fk_item;
+          const status = ri.status;
+          const qty = ri.quantity;
+          
+          remittedItemsTotal[id] = (remittedItemsTotal[id] || 0) + qty;
+          
+          if (!remittedItemsDetail[id]) remittedItemsDetail[id] = [];
+          const existing = remittedItemsDetail[id].find(x => x.status === status);
+          if (existing) existing.quantity += qty;
+          else remittedItemsDetail[id].push({ status, quantity: qty });
         }
       });
     });
@@ -224,6 +245,7 @@ async function getOneProject(req, res) {
             product_name: pp.productData?.name,
             quantity: pp.quantity,
             remitted_quantity: remittedProductsTotal[pp.productData?.id] || 0,
+            remitted_details: remittedProductsDetail[pp.productData?.id] || [],
             total_price: productTotal, // Mide el precio unitario del producto basado en sus componentes
             items: itemsData
           };
@@ -237,6 +259,7 @@ async function getOneProject(req, res) {
             item_name: ip.itemData?.description,
             quantity: quantity,
             remitted_quantity: remittedItemsTotal[ip.itemData?.id] || 0,
+            remitted_details: remittedItemsDetail[ip.itemData?.id] || [],
             price: price,
             total: quantity * price
           };

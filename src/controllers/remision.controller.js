@@ -79,17 +79,10 @@ async function save(req, res) {
                     else calculationUnits = base;
                 }
 
-                // Crear registro de producto en remisión
-                const remProduct = await RemisionProduct.create({
-                    fk_remision: remision.id,
-                    fk_product: id,
-                    quantity,
-                    status: 'Completo' // Se actualizará si falta stock
-                }, { transaction: t });
-
+                // Determinar si el producto quedará pendiente por falta de stock en sus ítems
                 let isPending = false;
+                const itemsToProcess = [];
 
-                // Procesar cada ítem del producto
                 for (const pi of (productData.productItem || [])) {
                     const itemDiscount = calculationUnits * Number(pi.quantity || 0) * Number(quantity);
                     const item = await Item.findByPk(pi.item, { transaction: t, lock: true });
@@ -100,24 +93,39 @@ async function save(req, res) {
                         isPending = true;
                     }
 
-                    // Descontar del stock
-                    await Item.update(
-                        { amount: sequelize.literal(`amount - ${itemDiscount}`) },
-                        { where: { id: pi.item }, transaction: t }
-                    );
+                    itemsToProcess.push({
+                        fk_item: pi.item,
+                        quantity: itemDiscount
+                    });
+                }
+
+                // Crear registro de producto en remisión
+                const remProduct = await RemisionProduct.create({
+                    fk_remision: remision.id,
+                    fk_product: id,
+                    quantity,
+                    status: isPending ? 'Pendiente' : 'Completo'
+                }, { transaction: t });
+
+                // Procesar cada ítem del producto
+                for (const itP of itemsToProcess) {
+                    // Solo descontar del stock si NO es pendiente
+                    if (!isPending) {
+                        await Item.update(
+                            { amount: sequelize.literal(`amount - ${itP.quantity}`) },
+                            { where: { id: itP.fk_item }, transaction: t }
+                        );
+                    }
 
                     // Registrar ítem de la remisión
                     await RemisionItem.create({
-                        fk_item: pi.item,
-                        quantity: itemDiscount,
+                        fk_item: itP.fk_item,
+                        quantity: itP.quantity,
                         fk_remision: remision.id,
                         fkUser,
-                        fk_remision_product: remProduct.id
+                        fk_remision_product: remProduct.id,
+                        status: isPending ? 'Pendiente' : 'Completo'
                     }, { transaction: t });
-                }
-
-                if (isPending) {
-                    await remProduct.update({ status: 'Pendiente' }, { transaction: t });
                 }
             }
         }
@@ -127,16 +135,24 @@ async function save(req, res) {
             for (const it of net_items) {
                 const { id, quantity } = it;
                 
-                await Item.update(
-                    { amount: sequelize.literal(`amount - ${quantity}`) },
-                    { where: { id }, transaction: t }
-                );
+                const item = await Item.findByPk(id, { transaction: t, lock: true });
+                if (!item) continue;
+
+                const isItemPending = Number(item.amount || 0) < Number(quantity);
+
+                if (!isItemPending) {
+                    await Item.update(
+                        { amount: sequelize.literal(`amount - ${quantity}`) },
+                        { where: { id }, transaction: t }
+                    );
+                }
 
                 await RemisionItem.create({
                     fk_item: id,
                     quantity,
                     fk_remision: remision.id,
-                    fkUser
+                    fkUser,
+                    status: isItemPending ? 'Pendiente' : 'Completo'
                 }, { transaction: t });
             }
         }

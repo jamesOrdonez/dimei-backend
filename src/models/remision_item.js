@@ -32,6 +32,12 @@ const RemisionItem = sequelize.define("RemisionItem", {
     fk_remision_product: {
         type: DataTypes.INTEGER,
         allowNull: true,
+    },
+
+    status: {
+        type: DataTypes.ENUM('Completo', 'Pendiente'),
+        allowNull: false,
+        defaultValue: 'Completo',
     }
 
 }, {
