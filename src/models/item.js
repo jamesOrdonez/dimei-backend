@@ -15,7 +15,7 @@ const Item = sequelize.define(
         unitOfMeasure: { type: DataTypes.INTEGER, allowNull: true },
         user: { type: DataTypes.INTEGER, allowNull: true },
         company: { type: DataTypes.INTEGER, allowNull: true },
-        img: { type: DataTypes.BLOB("long"), allowNull: true },
+        img: { type: DataTypes.STRING, allowNull: true },
     },
     {
         tableName: "item",

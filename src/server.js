@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT;
@@ -18,6 +19,7 @@ app.use(
   }),
 );
 
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use("/api/v1/", v1Routes);
 
 app.get("/", (req, res) => {

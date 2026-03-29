@@ -27,4 +27,10 @@ Product.hasMany(ItemProduct, {
     as: "productItem"
 })
 
+const GroupProduct = require("./group_product");
+Product.belongsTo(GroupProduct, {
+    foreignKey: "fk_group_product",
+    as: "group_product"
+});
+
 module.exports = Product;

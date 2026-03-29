@@ -4,11 +4,25 @@ const ItemGroup = require("../models/itemGroup");
 const UnitOfMeasure = require("../models/unitOfMeasure");
 const Module = "item";
 const { Op } = require("sequelize");
+const fs = require("fs");
+const path = require("path");
+const uploadsDir = path.join(__dirname, "../../uploads");
+
+// Ensure uploads directory exists
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 // Crear item
 async function saveItems(req, res) {
   try {
-    const img = req.file ? req.file.buffer : null;
+    let img = null;
+    if (req.file) {
+      const ext = path.extname(req.file.originalname);
+      img = `item-${Date.now()}${ext}`;
+      fs.writeFileSync(path.join(uploadsDir, img), req.file.buffer);
+    }
+
     const item = await Item.create({ ...req.body, img });
 
     res.status(httpStatus.CREATED).json({
@@ -86,7 +100,20 @@ async function updateItem(req, res) {
   try {
     const id = req.params.id;
     const updates = { ...req.body };
-    if (req.file) updates.img = req.file.buffer;
+
+    if (req.file) {
+      // Get current item to delete old image
+      const currentItem = await Item.findByPk(id);
+      if (currentItem && currentItem.img) {
+        const oldPath = path.join(uploadsDir, currentItem.img);
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+
+      const ext = path.extname(req.file.originalname);
+      const filename = `item-${Date.now()}${ext}`;
+      fs.writeFileSync(path.join(uploadsDir, filename), req.file.buffer);
+      updates.img = filename;
+    }
 
     const [updated] = await Item.update(updates, { where: { id } });
 
@@ -122,6 +149,14 @@ async function updateItem(req, res) {
 async function deleteItem(req, res) {
   try {
     const id = req.params.id;
+    
+    // Get item to delete physical file
+    const item = await Item.findByPk(id);
+    if (item && item.img) {
+      const filePath = path.join(uploadsDir, item.img);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }
+
     const deleted = await Item.destroy({ where: { id } });
 
     if (!deleted) {
@@ -204,9 +239,11 @@ async function getItemImage(req, res) {
 
     if (!item || !item.img) return res.status(404).end();
 
-    res.setHeader("Content-Type", "image/jpeg");
+    const filePath = path.join(uploadsDir, item.img);
+    if (!fs.existsSync(filePath)) return res.status(404).end();
+
     res.setHeader("Cache-Control", "public, max-age=86400");
-    res.send(item.img);
+    res.sendFile(filePath);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error interno", error });

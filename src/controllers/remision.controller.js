@@ -17,7 +17,8 @@ async function save(req, res) {
     try {
         let { description, company, fkUser, fk_proyect, net_products, net_items } = req.body;
 
-        // Agrupar productos duplicados por ID sumando sus cantidades
+        // 1. Agrupar duplicados y normalizar entrada
+        const normalizedProducts = [];
         if (net_products && Array.isArray(net_products)) {
             const aggregated = net_products.reduce((acc, p) => {
                 const id = Number(p.id);
@@ -25,10 +26,10 @@ async function save(req, res) {
                 acc[id] += Number(p.quantity || 0);
                 return acc;
             }, {});
-            net_products = Object.entries(aggregated).map(([id, quantity]) => ({ id: Number(id), quantity }));
+            Object.entries(aggregated).forEach(([id, quantity]) => normalizedProducts.push({ id: Number(id), quantity }));
         }
 
-        // Agrupar ítems duplicados por ID sumando sus cantidades
+        const normalizedItems = [];
         if (net_items && Array.isArray(net_items)) {
             const aggregated = net_items.reduce((acc, i) => {
                 const id = Number(i.id);
@@ -36,149 +37,149 @@ async function save(req, res) {
                 acc[id] += Number(i.quantity || 0);
                 return acc;
             }, {});
-            net_items = Object.entries(aggregated).map(([id, quantity]) => ({ id: Number(id), quantity }));
+            Object.entries(aggregated).forEach(([id, quantity]) => normalizedItems.push({ id: Number(id), quantity }));
         }
 
-        // 1. Obtener datos del proyecto para cálculos de variables
+        // 1b. Validar que no esté vacía
+        if (normalizedProducts.length === 0 && normalizedItems.length === 0) {
+            await t.rollback();
+            return res.status(httpStatus.BAD_REQUEST).json({
+                message: "No se puede guardar una remisión vacía. Debe seleccionar al menos un producto o ítem.",
+                module: Module
+            });
+        }
+
+        // 2. Obtener datos del proyecto para productos variables
         const project = await Proyect.findByPk(fk_proyect, { transaction: t });
         const travel = Number(project?.travel || 0);
 
-        // 2. Crear la cabecera de la Remisión
-        const remisionData = {
+        // 3. VALIDACIÓN PREVIA DE STOCK
+        const requiredStock = {}; // { itemId: quantity }
+        const itemNames = {};
+
+        // 3a. Calcular requerimientos de productos
+        for (const prod of normalizedProducts) {
+            const productData = await Product.findByPk(prod.id, {
+                include: [{ model: ItemProduct, as: 'productItem' }],
+                transaction: t
+            });
+            if (!productData) continue;
+
+            let calculationUnits = 1;
+            if (productData.variable) {
+                const v1 = Number(productData.value1 || 0);
+                const v2 = Number(productData.value2 || 0);
+                const op = productData.mathOperation;
+                let base = travel * v1;
+                if (op === '*') calculationUnits = base * v2;
+                else if (op === '/') calculationUnits = v2 !== 0 ? base / v2 : base;
+                else if (op === '+') calculationUnits = base + v2;
+                else if (op === '-') calculationUnits = base - v2;
+                else calculationUnits = base;
+            }
+
+            for (const pi of (productData.productItem || [])) {
+                const qty = calculationUnits * Number(pi.quantity || 0) * Number(prod.quantity);
+                requiredStock[pi.item] = (requiredStock[pi.item] || 0) + qty;
+            }
+        }
+
+        // 3b. Calcular requerimientos de ítems directos
+        for (const it of normalizedItems) {
+            requiredStock[it.id] = (requiredStock[it.id] || 0) + Number(it.quantity);
+        }
+
+        // 3c. Verificar disponibilidad real
+        const missingItems = [];
+        for (const [itemId, needed] of Object.entries(requiredStock)) {
+            const item = await Item.findByPk(itemId, { transaction: t, lock: true });
+            const amountNeeded = Number(needed);
+            if (!item || Number(item.amount) < amountNeeded) {
+                const name = item?.description || `Ítem #${itemId}`;
+                const available = Number(item?.amount || 0);
+                missingItems.push(`${name} (Disponible: ${available.toFixed(2)}, Requerido: ${amountNeeded.toFixed(2)})`);
+            }
+            if (item) itemNames[itemId] = item.description;
+        }
+
+        if (missingItems.length > 0) {
+            await t.rollback();
+            return res.status(httpStatus.BAD_REQUEST).json({
+                message: "No se puede realizar la remisión por falta de stock suficiente en los siguientes ítems:\n- " + missingItems.join("\n- "),
+                module: Module
+            });
+        }
+
+        // 4. PERSISTENCIA (Solo si hay stock suficiente para todo)
+        const remision = await Remision.create({
             description,
             fkUser,
             company,
             fk_proyect: fk_proyect || null
-        };
+        }, { transaction: t });
 
-        const remision = await Remision.create(remisionData, { transaction: t });
+        // 4a. Procesar y descontar productos
+        for (const prod of normalizedProducts) {
+            const productData = await Product.findByPk(prod.id, {
+                include: [{ model: ItemProduct, as: 'productItem' }],
+                transaction: t
+            });
 
-        // 3. Procesar Productos
-        const stockTracker = {};
-        const descriptionCache = {};
-        const pendingItemsList = []; // List of products/items that were marked as 'Pendiente'
+            let units = 1;
+            if (productData.variable) {
+                const v1 = Number(productData.value1 || 0);
+                const v2 = Number(productData.value2 || 0);
+                const op = productData.mathOperation;
+                let base = travel * v1;
+                if (op === '*') units = base * v2;
+                else if (op === '/') units = v2 !== 0 ? base / v2 : base;
+                else if (op === '+') units = base + v2;
+                else if (op === '-') units = base - v2;
+                else units = base;
+            }
 
-        if (net_products && Array.isArray(net_products)) {
-            for (const prod of net_products) {
-                const { id, quantity } = prod;
-                const productData = await Product.findByPk(id, {
-                    include: [{ model: ItemProduct, as: 'productItem' }],
-                    transaction: t
-                });
+            const remProduct = await RemisionProduct.create({
+                fk_remision: remision.id,
+                fk_product: prod.id,
+                quantity: prod.quantity,
+                status: 'Completo'
+            }, { transaction: t });
 
-                if (!productData) continue;
+            for (const pi of (productData.productItem || [])) {
+                const discount = units * Number(pi.quantity || 0) * Number(prod.quantity);
+                const item = await Item.findByPk(pi.item, { transaction: t });
+                await item.update({ amount: item.amount - discount }, { transaction: t });
 
-                let calculationUnits = 1;
-                if (productData.variable) {
-                    const v1 = Number(productData.value1 || 0);
-                    const v2 = Number(productData.value2 || 0);
-                    const op = productData.mathOperation;
-
-                    // Lógica: (recorrido * v1) [op] v2
-                    let base = travel * v1;
-                    if (op === '*') calculationUnits = base * v2;
-                    else if (op === '/') calculationUnits = v2 !== 0 ? base / v2 : base;
-                    else if (op === '+') calculationUnits = base + v2;
-                    else if (op === '-') calculationUnits = base - v2;
-                    else calculationUnits = base;
-                }
-
-                // Determinar si el producto quedará pendiente por falta de stock
-                let isPending = false;
-                const itemsToProcess = [];
-                const missingForProduct = [];
-
-                for (const pi of (productData.productItem || [])) {
-                    const itemDiscount = calculationUnits * Number(pi.quantity || 0) * Number(quantity);
-                    
-                    if (!(pi.item in stockTracker)) {
-                        const item = await Item.findByPk(pi.item, { transaction: t, lock: true });
-                        stockTracker[pi.item] = Number(item?.amount || 0);
-                        descriptionCache[pi.item] = item?.description || 'Desconocido';
-                    }
-
-                    if (stockTracker[pi.item] < itemDiscount) {
-                        isPending = true;
-                        missingForProduct.push(`${descriptionCache[pi.item]} (Falta: ${(itemDiscount - stockTracker[pi.item]).toFixed(2)})`);
-                    }
-
-                    itemsToProcess.push({
-                        fk_item: pi.item,
-                        quantity: itemDiscount
-                    });
-                }
-
-                if (isPending) {
-                    pendingItemsList.push({ name: productData.name, type: 'Producto', missing: missingForProduct });
-                }
-
-                // Crear registro de producto en remisión
-                const remProduct = await RemisionProduct.create({
+                await RemisionItem.create({
+                    fk_item: pi.item,
+                    quantity: discount,
                     fk_remision: remision.id,
-                    fk_product: id,
-                    quantity,
-                    status: isPending ? 'Pendiente' : 'Completo'
+                    fkUser,
+                    fk_remision_product: remProduct.id,
+                    status: 'Completo'
                 }, { transaction: t });
-
-                // Procesar cada ítem del producto
-                for (const itP of itemsToProcess) {
-                    if (!isPending) {
-                        stockTracker[itP.fk_item] -= itP.quantity;
-                        await Item.setAmount(itP.fk_item, stockTracker[itP.fk_item], t);
-                    }
-
-                    await RemisionItem.create({
-                        fk_item: itP.fk_item,
-                        quantity: itP.quantity,
-                        fk_remision: remision.id,
-                        fkUser,
-                        fk_remision_product: remProduct.id,
-                        status: isPending ? 'Pendiente' : 'Completo'
-                    }, { transaction: t });
-                }
             }
         }
 
-        // 4. Procesar Ítems directos
-        if (net_items && Array.isArray(net_items)) {
-            for (const it of net_items) {
-                const { id, quantity } = it;
-                
-                if (!(id in stockTracker)) {
-                    const item = await Item.findByPk(id, { transaction: t, lock: true });
-                    stockTracker[id] = Number(item?.amount || 0);
-                    descriptionCache[id] = item?.description || 'Ítem';
-                }
+        // 4b. Procesar y descontar ítems directos
+        for (const it of normalizedItems) {
+            const item = await Item.findByPk(it.id, { transaction: t });
+            await item.update({ amount: item.amount - Number(it.quantity) }, { transaction: t });
 
-                const isItemPending = stockTracker[id] < Number(quantity);
-
-                if (!isItemPending) {
-                    stockTracker[id] -= Number(quantity);
-                    await Item.setAmount(id, stockTracker[id], t);
-                } else {
-                    pendingItemsList.push({ 
-                        name: descriptionCache[id], 
-                        type: 'Ítem', 
-                        missing: [`Falta: ${Number(quantity) - stockTracker[id]}`] 
-                    });
-                }
-
-                await RemisionItem.create({
-                    fk_item: id,
-                    quantity,
-                    fk_remision: remision.id,
-                    fkUser,
-                    status: isItemPending ? 'Pendiente' : 'Completo'
-                }, { transaction: t });
-            }
+            await RemisionItem.create({
+                fk_item: it.id,
+                quantity: it.quantity,
+                fk_remision: remision.id,
+                fkUser,
+                status: 'Completo'
+            }, { transaction: t });
         }
 
         await t.commit();
 
         return res.status(httpStatus.OK).json({
             message: "Remisión procesada correctamente",
-            remisionId: remision.id,
-            pending: pendingItemsList // Return the pending list for frontend feedback
+            remisionId: remision.id
         });
 
     } catch (error) {
@@ -187,6 +188,7 @@ async function save(req, res) {
         return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
             message: "Error interno en el servidor",
             error: error.message,
+            module: Module,
         });
     }
 }

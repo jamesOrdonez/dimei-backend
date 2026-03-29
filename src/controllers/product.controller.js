@@ -3,12 +3,14 @@ const Product = require("../models/product");
 const ModuleName = "product";
 const ItemProduct = require("../models/item_product");
 const Item = require("../models/item");
+const GroupProduct = require("../models/group_product");
 
 async function getproduct(req, res) {
   try {
     const companyId = req.params.id;
     const products = await Product.findAll({
       where: { company: companyId },
+      include: [{ model: GroupProduct, as: "group_product" }],
       order: [["id", "DESC"]],
     });
 
