@@ -20,6 +20,7 @@ const proyect = require("./v1/proyect.routes");
 const product_proyect = require("./v1/product_proyect.routes");
 const item_proyect = require("./v1/item_proyect.routes");
 const group_product = require('./v1/group_product.routes');
+const dashboard = require('./v1/dashboard.routes');
 
 routes.use(User);
 routes.use(Login);
@@ -40,5 +41,6 @@ routes.use(proyect);
 routes.use(product_proyect);
 routes.use(item_proyect);
 routes.use(group_product);
+routes.use(dashboard);
 
 module.exports = routes;

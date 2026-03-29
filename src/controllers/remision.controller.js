@@ -115,6 +115,7 @@ async function save(req, res) {
             description,
             fkUser,
             company,
+            date: new Date(),
             fk_proyect: fk_proyect || null
         }, { transaction: t });
 

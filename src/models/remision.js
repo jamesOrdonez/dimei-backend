@@ -26,6 +26,7 @@ const Remision = sequelize.define("Remision", {
     date: {
         type: DataTypes.DATE,
         allowNull: true,
+        defaultValue: DataTypes.NOW
     },
 
     fk_proyect: {
