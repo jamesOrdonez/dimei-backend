@@ -2,6 +2,8 @@ const { DataTypes } = require("sequelize");
 const sequelize = require("../db/conection");
 
 const Company = require("./company");
+const Rol = require("./rol");
+
 
 const User = sequelize.define("User", {
     id: {
@@ -23,5 +25,9 @@ const User = sequelize.define("User", {
 
 User.belongsTo(Company, { foreignKey: "company" });
 Company.hasMany(User, { foreignKey: "company" });
+
+User.belongsTo(Rol, { foreignKey: "rol" });
+Rol.hasMany(User, { foreignKey: "rol" });
+
 
 module.exports = User;

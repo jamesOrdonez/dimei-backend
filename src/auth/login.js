@@ -4,6 +4,8 @@ const httpStatus = require("http-status");
 
 const User = require("../models/user");
 const Company = require("../models/company");
+const Rol = require("../models/rol");
+
 
 async function login(req, res) {
   try {
@@ -18,8 +20,10 @@ async function login(req, res) {
     const dbUser = await User.findOne({
       where: { user, state: true },
       include: [
-        { model: Company, attributes: ["id", "name"] }
+        { model: Company, attributes: ["id", "name"] },
+        { model: Rol, attributes: ["id", "name"] }
       ]
+
     });
 
     if (!dbUser) {
@@ -47,8 +51,10 @@ async function login(req, res) {
       userId: dbUser.id,
       user: dbUser.user,
       rolId: dbUser.rol,
+      rolName: dbUser.Rol?.name || null,
       company: dbUser.company,
       companyName: dbUser.Company?.name || null
+
     });
 
   } catch (error) {
