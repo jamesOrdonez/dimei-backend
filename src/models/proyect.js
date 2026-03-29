@@ -52,6 +52,10 @@ const Proyect = sequelize.define(
       allowNull: false,
       defaultValue: "Creado",
     },
+    signed_act: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     freezeTableName: true,

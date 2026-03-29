@@ -1,4 +1,6 @@
 const httpStatus = require("http-status");
+const fs = require("fs");
+const path = require("path");
 const model = require("../models/proyect");
 const ElevatorType = require("../models/elevatorType");
 const TypeDriveSystem = require("../models/typeDriveSystem");
@@ -413,10 +415,88 @@ async function updateState(req, res) {
   }
 }
 
+async function uploadSignedAct(req, res) {
+  try {
+    const { id } = req.params;
+    if (!req.file) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        message: "No se ha proporcionado ningún archivo",
+        Module,
+      });
+    }
+
+    const uploadDir = path.join(process.cwd(), "uploads", "documents");
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    const filename = `acta_firmada_proyecto_${id}_${Date.now()}.pdf`;
+    const filePath = path.join(uploadDir, filename);
+
+    // Save file to disk
+    fs.writeFileSync(filePath, req.file.buffer);
+
+    // Update database with filename
+    const updated = await model.update({ signed_act: filename }, {
+      where: { id }
+    });
+
+    if (updated[0] > 0) {
+      res.status(httpStatus.OK).json({
+        message: "Acta firmada cargada correctamente",
+        Module,
+      });
+    } else {
+      res.status(httpStatus.NOT_FOUND).json({
+        message: "Proyecto no encontrado",
+        Module,
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: `Error interno en el servidor: ${error}`,
+      Module,
+    });
+  }
+}
+
+async function getSignedAct(req, res) {
+  try {
+    const { id } = req.params;
+    const project = await model.findByPk(id, { attributes: ["signed_act"] });
+
+    if (!project || !project.signed_act) {
+      return res.status(httpStatus.NOT_FOUND).json({
+        message: "Acta no encontrada",
+        Module,
+      });
+    }
+
+    const filePath = path.join(process.cwd(), "uploads", "documents", project.signed_act);
+    if (!fs.existsSync(filePath)) {
+      return res.status(httpStatus.NOT_FOUND).json({
+        message: "Archivo no encontrado en el servidor",
+        Module,
+      });
+    }
+
+    res.sendFile(filePath);
+  } catch (error) {
+    console.error(error);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: `Error interno en el servidor: ${error}`,
+      Module,
+    });
+  }
+}
+
 module.exports = {
   save,
   getProject,
   getOneProject,
   getInventoryComparison,
   updateState,
+  uploadSignedAct,
+  getSignedAct,
 };
