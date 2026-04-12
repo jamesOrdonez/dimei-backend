@@ -194,8 +194,11 @@ async function entranceItems(req, res) {
     const item = await Item.findByPk(id);
     if (!item) return res.status(httpStatus.NOT_FOUND).json({ message: "Item no encontrado", module: Module });
 
-    item.amount += Number(entranceAmount);
-    await item.save();
+    const currentAmount = Number(item.amount || 0);
+    const addAmount = Number(entranceAmount || 0);
+    const newAmount = currentAmount + addAmount;
+
+    await item.update({ amount: newAmount });
 
     res.status(httpStatus.OK).json({
       message: "Cantidad actualizada",
@@ -203,7 +206,7 @@ async function entranceItems(req, res) {
       data: item,
     });
   } catch (error) {
-    console.error(error);
+    console.error("❌ ERROR EN ENTRADA DE ITEMS:", error);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
       message: "Error interno en el servidor",
       module: Module,
@@ -220,8 +223,11 @@ async function exitItems(req, res) {
     const item = await Item.findByPk(id);
     if (!item) return res.status(httpStatus.NOT_FOUND).json({ message: "Item no encontrado", module: Module });
 
-    item.amount -= Number(exitAmount);
-    await item.save();
+    const currentAmount = Number(item.amount || 0);
+    const subAmount = Number(exitAmount || 0);
+    const newAmount = currentAmount - subAmount;
+
+    await item.update({ amount: newAmount });
 
     res.status(httpStatus.OK).json({
       message: "Cantidad actualizada",
@@ -229,7 +235,7 @@ async function exitItems(req, res) {
       data: item,
     });
   } catch (error) {
-    console.error(error);
+    console.error("❌ ERROR EN SALIDA DE ITEMS:", error);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
       message: "Error interno en el servidor",
       module: Module,
