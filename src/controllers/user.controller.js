@@ -1,8 +1,10 @@
 const bcrypt = require("bcryptjs");
 const httpStatus = require("http-status");
 const User = require("../models/user");
+const Rol = require("../models/rol");
 
 const Module = "user";
+
 
 async function saveUser(req, res) {
   try {
@@ -41,6 +43,7 @@ async function getUser(req, res) {
 
     const data = await User.findAll({
       where: { company: id },
+      include: [{ model: Rol }],
       order: [["id", "DESC"]],
       attributes: { exclude: ["password"] },
     });
@@ -65,6 +68,7 @@ async function getOneUser(req, res) {
     const { id } = req.params;
 
     const user = await User.findByPk(id, {
+      include: [{ model: Rol }],
       attributes: { exclude: ["password"] },
     });
 

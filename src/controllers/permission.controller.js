@@ -1,115 +1,116 @@
 const httpStatus = require("http-status");
 const Permission = require("../models/permission");
+const Rol = require("../models/rol");
+
 const ModuleName = "permission";
-const Module = require("../models/modules");
-const rol = require("../models/rol");
-const User = require("../models/user");
+
+// Los 8 permisos literales configurables del sistema
+const ALLOWED_PERMISSIONS = [
+    "Acceso a ingresar material",
+    "Hacer remisiones de proyectos",
+    "Crear ítems",
+    "Crear productos",
+    "Crear proyectos",
+    "Consultar listas de compras",
+    "Anexar actas de entrega",
+    "Pedir material adicional",
+];
+
+/**
+ * Obtener permisos de un rol específico
+ */
 async function getPermissRol(req, res) {
     try {
-        const companyId = req.params.id;
-
+        const rolId = req.params.id;
         const permissions = await Permission.findAll({
-            where: { company: companyId },
-            order: [["id", "DESC"]],
-            include: [
-                { model: User, attributes: ["name"], as: "userData" },
-                { model: Rol, attributes: ["name"], as: "rolData" },
-                { model: Module, attributes: ["module"], as: "moduleData" },
-            ],
+            where: { rol: rolId },
+            attributes: ["id", "permiss"],
         });
-
         res.status(httpStatus.OK).json({
             data: permissions,
+            allPermissions: ALLOWED_PERMISSIONS,
             module: ModuleName,
         });
     } catch (error) {
         console.error(error);
-        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-            message: `Error interno en el servidor: ${error.message}`,
-            module: ModuleName,
-        });
+        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message, module: ModuleName });
     }
 }
 
-async function savePermission(req, res) {
+/**
+ * Sincroniza (reemplaza) todos los permisos de un rol.
+ * Body: { rolId, company, permissions: ["Crear ítems", "Crear productos", ...] }
+ */
+async function syncPermissions(req, res) {
     try {
-        const { permiss, module, rol, company } = req.body;
+        const { rolId, company, permissions } = req.body;
 
-        const newPermiss = await Permission.create({ permiss, module, rol, company });
-
-        res.status(httpStatus.CREATED).json({
-            message: "Registro creado",
-            module: ModuleName,
-            data: newPermiss,
-        });
-    } catch (error) {
-        console.error(error);
-        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-            message: `Error interno en el servidor: ${error.message}`,
-            module: ModuleName,
-        });
-    }
-}
-
-async function updatePermission(req, res) {
-    try {
-        const id = req.params.id;
-        const { permiss, module, rol } = req.body;
-
-        const [updated] = await Permission.update({ permiss, module, rol }, { where: { id } });
-
-        if (!updated) {
-            return res.status(httpStatus.NOT_FOUND).json({
-                message: "Registro no encontrado",
+        if (!rolId || !company || !Array.isArray(permissions)) {
+            return res.status(httpStatus.BAD_REQUEST).json({
+                message: "rolId, company y permissions[] son requeridos",
                 module: ModuleName,
             });
         }
 
-        const updatedPermiss = await Permission.findByPk(id);
+        // Validar que solo vengan permisos permitidos
+        const validPermissions = permissions.filter(p => ALLOWED_PERMISSIONS.includes(p));
 
-        res.status(httpStatus.OK).json({
-            message: "Registro actualizado",
-            module: ModuleName,
-            data: updatedPermiss,
-        });
-    } catch (error) {
-        console.error(error);
-        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-            message: `Error interno en el servidor: ${error.message}`,
-            module: ModuleName,
-        });
-    }
-}
+        // Verificar que el rol existe
+        const rol = await Rol.findByPk(rolId);
+        if (!rol) {
+            return res.status(httpStatus.NOT_FOUND).json({ message: "Rol no encontrado", module: ModuleName });
+        }
 
-async function deletePermission(req, res) {
-    try {
-        const id = req.params.id;
+        // Reemplazar todos los permisos del rol
+        await Permission.destroy({ where: { rol: rolId, company } });
 
-        const deleted = await Permission.destroy({ where: { id } });
-
-        if (!deleted) {
-            return res.status(httpStatus.NOT_FOUND).json({
-                message: "Registro no encontrado",
-                module: ModuleName,
-            });
+        if (validPermissions.length > 0) {
+            const records = validPermissions.map(p => ({ rol: rolId, company, permiss: p }));
+            await Permission.bulkCreate(records);
         }
 
         res.status(httpStatus.OK).json({
-            message: "Registro eliminado",
+            message: "Permisos actualizados correctamente",
+            permissions: validPermissions,
             module: ModuleName,
         });
     } catch (error) {
         console.error(error);
-        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-            message: `Error interno en el servidor: ${error.message}`,
-            module: ModuleName,
+        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message, module: ModuleName });
+    }
+}
+
+/**
+ * Retorna todos los permisos del usuario autenticado (según su rol).
+ * Usado por el frontend al cargar el contexto de permisos.
+ */
+async function getMyPermissions(req, res) {
+    try {
+        const { rolId, company } = req.tokenData;
+
+        const permissions = await Permission.findAll({
+            where: { rol: rolId, company },
+            attributes: ["permiss"],
         });
+
+        const permissList = permissions.map(p => p.permiss);
+        const rol = await Rol.findOne({ where: { id: rolId } });
+
+        return res.status(httpStatus.OK).json({
+            permissions: permissList,
+            rolName: rol ? rol.name : null,
+            isAdmin: rol ? rol.name === "Administrador" : false,
+            allPermissions: ALLOWED_PERMISSIONS,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message, module: ModuleName });
     }
 }
 
 module.exports = {
     getPermissRol,
-    savePermission,
-    updatePermission,
-    deletePermission,
+    syncPermissions,
+    getMyPermissions,
+    ALLOWED_PERMISSIONS,
 };
