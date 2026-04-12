@@ -285,6 +285,7 @@ async function getOneProject(req, res) {
 async function getInventoryComparison(req, res) {
   try {
     const companyId = req.params.company;
+    const projectId = req.query.projectId;
 
     // 1. Get all items for the company
     const items = await Item.findAll({
@@ -333,40 +334,59 @@ async function getInventoryComparison(req, res) {
       productItemMap[pi.product].push(pi);
     });
 
-    // Calculate separated quantity per item
-    const separatedPerItem = {};
+    // Calculate separated quantity per item (Total and Specific Project)
+    const separatedPerItemTotal = {};
+    const separatedPerItemProject = {};
 
     // 2a. Add direct items
     separatedItems.forEach(si => {
-      if (!separatedPerItem[si.item]) separatedPerItem[si.item] = 0;
-      separatedPerItem[si.item] += (si.quantity || 0);
+      const itemId = si.item;
+      const qty = si.quantity || 0;
+      const projId = si.proyect;
+
+      if (!separatedPerItemTotal[itemId]) separatedPerItemTotal[itemId] = 0;
+      separatedPerItemTotal[itemId] += qty;
+
+      if (projectId && String(projId) === String(projectId)) {
+        if (!separatedPerItemProject[itemId]) separatedPerItemProject[itemId] = 0;
+        separatedPerItemProject[itemId] += qty;
+      }
     });
 
     // 3a. Add items via products
     separatedProducts.forEach(sp => {
       const prodId = sp.product;
       const projQty = sp.quantity || 0;
+      const projId = sp.proyect;
       const itemsInProd = productItemMap[prodId] || [];
       
       itemsInProd.forEach(pi => {
         const itemQtyPerProduct = pi.quantity || 0;
         const totalItemsSeparated = projQty * itemQtyPerProduct;
+        const itemId = pi.item;
         
-        if (!separatedPerItem[pi.item]) separatedPerItem[pi.item] = 0;
-        separatedPerItem[pi.item] += totalItemsSeparated;
+        if (!separatedPerItemTotal[itemId]) separatedPerItemTotal[itemId] = 0;
+        separatedPerItemTotal[itemId] += totalItemsSeparated;
+
+        if (projectId && String(projId) === String(projectId)) {
+          if (!separatedPerItemProject[itemId]) separatedPerItemProject[itemId] = 0;
+          separatedPerItemProject[itemId] += totalItemsSeparated;
+        }
       });
     });
 
     // Map the result
     const comparison = items.map(it => {
-      const separated = separatedPerItem[it.id] || 0;
+      const totalSeparated = separatedPerItemTotal[it.id] || 0;
+      const projectSeparated = projectId ? (separatedPerItemProject[it.id] || 0) : totalSeparated;
       const amount = it.amount || 0;
+
       return {
         id: it.id,
         item_name: it.description,
         total_inventory: amount,
-        separated_inventory: separated,
-        available_inventory: amount - separated,
+        separated_inventory: projectSeparated,
+        available_inventory: amount - totalSeparated, // Disponibilidad real libre
         category: it.group_item,
         price: it.price || 0
       };
