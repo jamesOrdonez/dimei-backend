@@ -16,5 +16,9 @@ router
         "/completeRemission",
         remisionController.complete,
     )
+    .get(
+        "/getAll/:company",
+        remisionController.getAll,
+    );
 
 module.exports = router;

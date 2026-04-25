@@ -8,6 +8,7 @@ const Proyect = require("../models/proyect");
 const Product = require("../models/product");
 const ItemProduct = require("../models/item_product");
 const RemisionProduct = require("../models/remision_product");
+const User = require("../models/user");
 
 const Module = "remision";
 
@@ -356,7 +357,85 @@ Item.setAmount = async (id, amount, transaction) => {
     return await Item.update({ amount }, { where: { id }, transaction });
 };
 
+async function getAll(req, res) {
+    try {
+        const { company } = req.params;
+        const whereClause = {};
+        if (company) {
+            whereClause.company = company;
+        }
+
+        const remisiones = await Remision.findAll({
+            where: whereClause,
+            include: [
+                {
+                    model: User,
+                    as: 'user',
+                    attributes: ['id', 'name', 'user']
+                },
+                {
+                    model: Proyect,
+                    as: 'proyect',
+                    include: [
+                        {
+                            model: require("../models/clients"),
+                            as: 'customerData'
+                        }
+                    ]
+                },
+                {
+                    model: RemisionProduct,
+                    as: 'remisionProducts',
+                    include: [
+                        {
+                            model: Product,
+                            as: 'product',
+                            attributes: ['id', 'name']
+                        }
+                    ]
+                },
+                {
+                    model: RemisionItem,
+                    as: 'remisionItems',
+                    include: [
+                        {
+                            model: Item,
+                            as: 'item',
+                            attributes: ['id', 'description']
+                        }
+                    ]
+                }
+            ],
+            order: [['date', 'DESC']]
+        });
+
+        const formattedRemisiones = remisiones.map(r => ({
+            id: r.id,
+            date: r.date,
+            project: r.proyect?.id ? `Proyecto #${r.proyect.id}` : 'S/N',
+            customer: r.proyect?.customerData?.nombre || 'S/N',
+            description: r.description || 'Sin descripción',
+            elaboradoPor: r.user?.name || 'Sistema',
+            remisionProducts: r.remisionProducts,
+            remisionItems: r.remisionItems,
+            proyect: r.proyect // Keep original proyect reference just in case
+        }));
+
+        return res.status(httpStatus.OK).json({
+            data: formattedRemisiones,
+            module: Module
+        });
+    } catch (error) {
+        console.error("Error al obtener remisiones:", error);
+        return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+            message: "Error interno al procesar la solicitud.",
+            error: error.message
+        });
+    }
+}
+
 module.exports = {
     save,
-    complete
+    complete,
+    getAll
 };
