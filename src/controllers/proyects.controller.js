@@ -388,7 +388,8 @@ async function getInventoryComparison(req, res) {
         separated_inventory: projectSeparated,
         available_inventory: amount - totalSeparated, // Disponibilidad real libre
         category: it.group_item,
-        price: it.price || 0
+        price: it.price || 0,
+        low_stock: it.low_stock || 0
       };
     });
 

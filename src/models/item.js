@@ -16,6 +16,7 @@ const Item = sequelize.define(
         user: { type: DataTypes.INTEGER, allowNull: true },
         company: { type: DataTypes.INTEGER, allowNull: true },
         img: { type: DataTypes.STRING, allowNull: true },
+        low_stock: { type: DataTypes.FLOAT, allowNull: true, defaultValue: 3 },
     },
     {
         tableName: "item",
