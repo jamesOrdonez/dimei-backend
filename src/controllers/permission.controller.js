@@ -1,34 +1,58 @@
 const httpStatus = require("http-status");
 const Permission = require("../models/permission");
+const PermissionCatalog = require("../models/permissionCatalog");
 const Rol = require("../models/rol");
 
 const ModuleName = "permission";
 
-// Los 8 permisos literales configurables del sistema
-const ALLOWED_PERMISSIONS = [
-    "Acceso a ingresar material",
-    "Hacer remisiones de proyectos",
-    "Crear ítems",
-    "Crear productos",
-    "Crear proyectos",
-    "Consultar listas de compras",
-    "Anexar actas de entrega",
-    "Pedir material adicional",
-];
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers internos
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Devuelve el catálogo completo como un mapa: nombre → id */
+async function getCatalogMap() {
+    const catalog = await PermissionCatalog.findAll({ attributes: ["id", "name"] });
+    const nameToId = {};
+    const idToName = {};
+    catalog.forEach(c => {
+        nameToId[c.name] = c.id;
+        idToName[c.id]   = c.name;
+    });
+    return { nameToId, idToName, catalog };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Endpoints
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Obtener permisos de un rol específico
+ * GET /getPermissions/:id
+ * Devuelve los permisos asignados a un rol, con el listado completo del catálogo.
+ * Respuesta: { data: [{ id, permiss }], allPermissions: [...] }
+ * — el frontend sigue leyendo data[].permiss como antes.
  */
 async function getPermissRol(req, res) {
     try {
         const rolId = req.params.id;
-        const permissions = await Permission.findAll({
+
+        const { idToName, catalog } = await getCatalogMap();
+
+        const privileges = await Permission.findAll({
             where: { rol: rolId },
-            attributes: ["id", "permiss"],
+            attributes: ["id", "id_permiso"],
         });
+
+        // Transformar a formato que el frontend ya conoce: { id, permiss }
+        const data = privileges.map(p => ({
+            id: p.id,
+            permiss: idToName[p.id_permiso] || null,
+        }));
+
+        const allPermissions = catalog.map(c => c.name);
+
         res.status(httpStatus.OK).json({
-            data: permissions,
-            allPermissions: ALLOWED_PERMISSIONS,
+            data,
+            allPermissions,
             module: ModuleName,
         });
     } catch (error) {
@@ -38,7 +62,8 @@ async function getPermissRol(req, res) {
 }
 
 /**
- * Sincroniza (reemplaza) todos los permisos de un rol.
+ * POST /syncPermissions
+ * Reemplaza todos los permisos de un rol.
  * Body: { rolId, company, permissions: ["Crear ítems", "Crear productos", ...] }
  */
 async function syncPermissions(req, res) {
@@ -52,20 +77,26 @@ async function syncPermissions(req, res) {
             });
         }
 
-        // Validar que solo vengan permisos permitidos
-        const validPermissions = permissions.filter(p => ALLOWED_PERMISSIONS.includes(p));
-
         // Verificar que el rol existe
         const rol = await Rol.findByPk(rolId);
         if (!rol) {
             return res.status(httpStatus.NOT_FOUND).json({ message: "Rol no encontrado", module: ModuleName });
         }
 
-        // Reemplazar todos los permisos del rol
+        const { nameToId } = await getCatalogMap();
+
+        // Filtrar solo nombres que existan en el catálogo
+        const validPermissions = permissions.filter(p => nameToId[p]);
+
+        // Reemplazar todos los privilegios del rol
         await Permission.destroy({ where: { rol: rolId, company } });
 
         if (validPermissions.length > 0) {
-            const records = validPermissions.map(p => ({ rol: rolId, company, permiss: p }));
+            const records = validPermissions.map(p => ({
+                rol: rolId,
+                company,
+                id_permiso: nameToId[p],
+            }));
             await Permission.bulkCreate(records);
         }
 
@@ -81,26 +112,29 @@ async function syncPermissions(req, res) {
 }
 
 /**
+ * GET /getMyPermissions
  * Retorna todos los permisos del usuario autenticado (según su rol).
- * Usado por el frontend al cargar el contexto de permisos.
+ * Respuesta: { permissions: ["Crear ítems", ...], rolName, isAdmin, allPermissions }
  */
 async function getMyPermissions(req, res) {
     try {
         const { rolId, company } = req.tokenData;
 
-        const permissions = await Permission.findAll({
+        const { idToName, catalog } = await getCatalogMap();
+
+        const privileges = await Permission.findAll({
             where: { rol: rolId, company },
-            attributes: ["permiss"],
+            attributes: ["id_permiso"],
         });
 
-        const permissList = permissions.map(p => p.permiss);
+        const permissList = privileges.map(p => idToName[p.id_permiso]).filter(Boolean);
         const rol = await Rol.findOne({ where: { id: rolId } });
 
         return res.status(httpStatus.OK).json({
             permissions: permissList,
             rolName: rol ? rol.name : null,
             isAdmin: rol ? rol.name === "Administrador" : false,
-            allPermissions: ALLOWED_PERMISSIONS,
+            allPermissions: catalog.map(c => c.name),
         });
     } catch (error) {
         console.error(error);
@@ -112,5 +146,4 @@ module.exports = {
     getPermissRol,
     syncPermissions,
     getMyPermissions,
-    ALLOWED_PERMISSIONS,
 };
