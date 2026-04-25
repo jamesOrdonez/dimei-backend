@@ -290,7 +290,11 @@ async function getInventoryComparison(req, res) {
     // 1. Get all items for the company
     const items = await Item.findAll({
       where: { company: companyId },
+      include: [
+        { model: Client, attributes: ["nombre"], as: "Proveedor" }
+      ],
       raw: true,
+      nest: true,
     });
 
     // 2. Get separated items directly tied to projects
@@ -389,7 +393,8 @@ async function getInventoryComparison(req, res) {
         available_inventory: amount - totalSeparated, // Disponibilidad real libre
         category: it.group_item,
         price: it.price || 0,
-        low_stock: it.low_stock || 0
+        low_stock: it.low_stock || 0,
+        proveedor: it.Proveedor?.nombre || '-',
       };
     });
 
