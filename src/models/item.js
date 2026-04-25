@@ -1,5 +1,6 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../db/conection");
+const Client = require("./clients");
 
 const Item = sequelize.define(
     "Item",
@@ -17,11 +18,14 @@ const Item = sequelize.define(
         company: { type: DataTypes.INTEGER, allowNull: true },
         img: { type: DataTypes.STRING, allowNull: true },
         low_stock: { type: DataTypes.FLOAT, allowNull: true, defaultValue: 3 },
+        proveedor_id: { type: DataTypes.INTEGER, allowNull: true },
     },
     {
         tableName: "item",
         timestamps: false,
     }
 );
+
+Item.belongsTo(Client, { foreignKey: 'proveedor_id', as: 'Proveedor' });
 
 module.exports = Item;

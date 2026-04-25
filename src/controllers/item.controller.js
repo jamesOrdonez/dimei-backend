@@ -2,6 +2,7 @@ const httpStatus = require("http-status");
 const Item = require("../models/item");
 const ItemGroup = require("../models/itemGroup");
 const UnitOfMeasure = require("../models/unitOfMeasure");
+const Client = require("../models/clients");
 const Module = "item";
 const { Op } = require("sequelize");
 const fs = require("fs");
@@ -56,6 +57,7 @@ async function getItems(req, res) {
       include: [
         { model: ItemGroup, attributes: ["id", "name"], as: "ItemGroup" },
         { model: UnitOfMeasure, attributes: ["id", "unitOfMeasure"], as: "UnitOfMeasure" },
+        { model: Client, attributes: ["id", "nombre"], as: "Proveedor" },
       ],
     });
 
@@ -78,6 +80,7 @@ async function getOneItem(req, res) {
       include: [
         { model: ItemGroup, attributes: ["id", "name"], as: "ItemGroup" },
         { model: UnitOfMeasure, attributes: ["id", "unitOfMeasure"], as: "UnitOfMeasure" },
+        { model: Client, attributes: ["id", "nombre"], as: "Proveedor" },
       ],
     });
 
@@ -134,6 +137,7 @@ async function updateItem(req, res) {
       include: [
         { model: ItemGroup, attributes: ["id", "name"], as: "ItemGroup" },
         { model: UnitOfMeasure, attributes: ["id", "unitOfMeasure"], as: "UnitOfMeasure" },
+        { model: Client, attributes: ["id", "nombre"], as: "Proveedor" },
       ],
     });
 
