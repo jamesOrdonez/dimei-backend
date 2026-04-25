@@ -50,6 +50,7 @@ async function login(req, res) {
       token,
       userId: dbUser.id,
       user: dbUser.user,
+      name: dbUser.name,
       rolId: dbUser.rol,
       rolName: dbUser.Rol?.name || null,
       company: dbUser.company,
