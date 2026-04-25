@@ -125,7 +125,7 @@ async function updateItem(req, res) {
 
     if (!updated) {
       return res.status(httpStatus.NOT_FOUND).json({
-        message: "Item no encontrado",
+        message: "No se detectaron cambios en el registro",
         module: Module,
       });
     }
