@@ -184,9 +184,9 @@ async function getOneProject(req, res) {
         const id = rp.fk_product;
         const status = rp.status;
         const qty = rp.quantity;
-        
+
         remittedProductsTotal[id] = (remittedProductsTotal[id] || 0) + qty;
-        
+
         if (!remittedProductsDetail[id]) remittedProductsDetail[id] = [];
         const existing = remittedProductsDetail[id].find(x => x.status === status);
         if (existing) existing.quantity += qty;
@@ -199,9 +199,9 @@ async function getOneProject(req, res) {
           const id = ri.fk_item;
           const status = ri.status;
           const qty = ri.quantity;
-          
+
           remittedItemsTotal[id] = (remittedItemsTotal[id] || 0) + qty;
-          
+
           if (!remittedItemsDetail[id]) remittedItemsDetail[id] = [];
           const existing = remittedItemsDetail[id].find(x => x.status === status);
           if (existing) existing.quantity += qty;
@@ -359,12 +359,12 @@ async function getInventoryComparison(req, res) {
       const projQty = sp.quantity || 0;
       const projId = sp.proyect;
       const itemsInProd = productItemMap[prodId] || [];
-      
+
       itemsInProd.forEach(pi => {
         const itemQtyPerProduct = pi.quantity || 0;
         const totalItemsSeparated = projQty * itemQtyPerProduct;
         const itemId = pi.item;
-        
+
         if (!separatedPerItemTotal[itemId]) separatedPerItemTotal[itemId] = 0;
         separatedPerItemTotal[itemId] += totalItemsSeparated;
 

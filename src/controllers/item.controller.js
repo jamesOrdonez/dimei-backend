@@ -52,7 +52,7 @@ async function getItems(req, res) {
     const companyId = req.params.id;
     const items = await Item.findAll({
       where: { company: companyId },
-      order: [["id", "DESC"]],
+      order: [[{ model: ItemGroup, as: "ItemGroup" }, "name", "ASC"]],
       include: [
         { model: ItemGroup, attributes: ["id", "name"], as: "ItemGroup" },
         { model: UnitOfMeasure, attributes: ["id", "unitOfMeasure"], as: "UnitOfMeasure" },
@@ -155,7 +155,7 @@ async function updateItem(req, res) {
 async function deleteItem(req, res) {
   try {
     const id = req.params.id;
-    
+
     // Get item to delete physical file
     const item = await Item.findByPk(id);
     if (item && item.img) {
