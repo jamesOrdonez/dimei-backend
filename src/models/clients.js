@@ -32,6 +32,11 @@ const Client = sequelize.define('client', {
         allowNull: true,
         defaultValue: DataTypes.NOW,
     },
+    tipo: {
+        type: DataTypes.STRING(20),
+        allowNull: false,
+        defaultValue: 'cliente',
+    },
     estado: {
         type: DataTypes.TINYINT,
         allowNull: true,

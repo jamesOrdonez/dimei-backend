@@ -11,7 +11,8 @@ async function saveClient(req, res) {
             nombre: data.nombre,
             nit: data.nit,
             direccion: data.direccion,
-            company: data.company
+            company: data.company,
+            tipo: data.tipo || 'cliente'
         });
 
         const clientId = client.id;
@@ -59,9 +60,10 @@ async function saveClient(req, res) {
 async function getClients(req, res) {
     try {
         const id = req.params.id;
+        const tipo = req.query.tipo || 'cliente';
 
         const clients = await model.findAll({
-            where: { company: id },
+            where: { company: id, tipo: tipo },
             include: [
                 {
                     model: modelContact,
@@ -117,7 +119,8 @@ async function updateClient(req, res) {
             nombre: data.nombre,
             nit: data.nit,
             direccion: data.direccion,
-            company: data.company
+            company: data.company,
+            tipo: data.tipo || cliente.tipo
         });
 
         if (data.contacto_principal) {
