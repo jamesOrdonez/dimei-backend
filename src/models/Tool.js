@@ -23,10 +23,13 @@ const Tool = sequelize.define(
     }
 );
 
-const ItemGroup = require("./itemGroup");
-const UnitOfMeasure = require("./unitOfMeasure");
+const ToolGroup = require("./ToolGroup");
+const ToolUnitOfMeasure = require("./ToolUnitOfMeasure");
 
-Tool.belongsTo(ItemGroup, { foreignKey: "group_item", as: "ItemGroup" });
-Tool.belongsTo(UnitOfMeasure, { foreignKey: "unitOfMeasure", as: "UnitOfMeasure" });
+Tool.belongsTo(ToolGroup, { foreignKey: "group_item", as: "ToolGroup" });
+ToolGroup.hasMany(Tool, { foreignKey: "group_item", as: "tools" });
+
+Tool.belongsTo(ToolUnitOfMeasure, { foreignKey: "unitOfMeasure", as: "ToolUnitOfMeasure" });
+ToolUnitOfMeasure.hasMany(Tool, { foreignKey: "unitOfMeasure", as: "tools" });
 
 module.exports = Tool;

@@ -25,6 +25,7 @@ const rol = require('./v1/rol.routes');
 const tool = require('./v1/tool.routes');
 const toolGroup = require('./v1/toolGroup.routes');
 const toolUnitOfMeasure = require('./v1/toolUnitOfMeasure.routes');
+const toolLoan = require('./v1/toolLoan.routes');
 
 routes.use(User);
 routes.use(Login);
@@ -50,5 +51,6 @@ routes.use(rol);
 routes.use(tool);
 routes.use(toolGroup);
 routes.use(toolUnitOfMeasure);
+routes.use(toolLoan);
 
 module.exports = routes;

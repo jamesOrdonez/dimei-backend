@@ -58,7 +58,29 @@ async function getTools(req, res) {
       ],
     });
 
-    res.status(httpStatus.OK).json({ data: tools, module: Module });
+    const ToolLoanItem = require("../models/ToolLoanItem");
+    const ToolLoan = require("../models/ToolLoan");
+
+    const activeLoans = await ToolLoanItem.findAll({
+      include: [{
+        model: ToolLoan,
+        as: 'toolLoan',
+        where: { status: 'Prestado', company: companyId }
+      }]
+    });
+    
+    const lentMap = {};
+    activeLoans.forEach(item => {
+      lentMap[item.tool_id] = (lentMap[item.tool_id] || 0) + item.quantity;
+    });
+
+    const formattedTools = tools.map(t => {
+      const toolData = t.toJSON();
+      toolData.lent_amount = lentMap[t.id] || 0;
+      return toolData;
+    });
+
+    res.status(httpStatus.OK).json({ data: formattedTools, module: Module });
   } catch (error) {
     console.error(error);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).json({

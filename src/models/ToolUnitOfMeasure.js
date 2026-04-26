@@ -1,6 +1,5 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../db/conection");
-const Tool = require("./Tool");
 
 const ToolUnitOfMeasure = sequelize.define(
     "ToolUnitOfMeasure",
@@ -14,8 +13,5 @@ const ToolUnitOfMeasure = sequelize.define(
         timestamps: false,
     }
 );
-
-ToolUnitOfMeasure.hasMany(Tool, { foreignKey: "unitOfMeasure", as: "tools" });
-Tool.belongsTo(ToolUnitOfMeasure, { foreignKey: "unitOfMeasure", as: "ToolUnitOfMeasure" });
 
 module.exports = ToolUnitOfMeasure;

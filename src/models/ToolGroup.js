@@ -1,6 +1,5 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../db/conection");
-const Tool = require("./Tool");
 
 const ToolGroup = sequelize.define(
     "ToolGroup",
@@ -15,8 +14,5 @@ const ToolGroup = sequelize.define(
         timestamps: false,
     }
 );
-
-ToolGroup.hasMany(Tool, { foreignKey: "group_item", as: "tools" });
-Tool.belongsTo(ToolGroup, { foreignKey: "group_item", as: "ToolGroup" });
 
 module.exports = ToolGroup;
