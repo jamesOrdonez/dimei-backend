@@ -22,6 +22,9 @@ const item_proyect = require("./v1/item_proyect.routes");
 const group_product = require('./v1/group_product.routes');
 const dashboard = require('./v1/dashboard.routes');
 const rol = require('./v1/rol.routes');
+const tool = require('./v1/tool.routes');
+const toolGroup = require('./v1/toolGroup.routes');
+const toolUnitOfMeasure = require('./v1/toolUnitOfMeasure.routes');
 
 routes.use(User);
 routes.use(Login);
@@ -44,5 +47,8 @@ routes.use(item_proyect);
 routes.use(group_product);
 routes.use(dashboard);
 routes.use(rol);
+routes.use(tool);
+routes.use(toolGroup);
+routes.use(toolUnitOfMeasure);
 
 module.exports = routes;
