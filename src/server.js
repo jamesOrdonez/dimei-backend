@@ -13,7 +13,7 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN,
+    origin: process.env.CORS_ORIGIN, // ✅ la línea que pediste
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
   }),
