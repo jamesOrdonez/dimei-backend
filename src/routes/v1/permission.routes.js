@@ -1,16 +1,10 @@
 const router = require("express").Router();
-const protectedRoute = require("../../middleware/protected.route");
+const { verifyToken } = require("../../middleware/protected.route");
 const controller = require("../../controllers/permission.controller");
-const Module = "permission";
-
-const options = {
-    Module: Module
-}
 
 router
-    .get("/getPermission/:id", protectedRoute(options), controller.getPermissRol)
-    .post("/savePermission", protectedRoute(options), controller.savePermission)
-    .put("/updatePermission/:id", protectedRoute(options), controller.updatePermission)
-    .delete("/deletePermission/:id", protectedRoute(options), controller.deletePermission);
+    .get("/getPermissions/:id", verifyToken, controller.getPermissRol)
+    .post("/syncPermissions", verifyToken, controller.syncPermissions)
+    .get("/getMyPermissions", verifyToken, controller.getMyPermissions);
 
 module.exports = router;

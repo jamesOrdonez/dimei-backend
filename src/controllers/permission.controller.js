@@ -1,92 +1,149 @@
-const httpStatus = require('http-status');
-const conection = require('../db/conection');
-const Module = 'permission';
+const httpStatus = require("http-status");
+const Permission = require("../models/permission");
+const PermissionCatalog = require("../models/permissionCatalog");
+const Rol = require("../models/rol");
 
-async function getPermissRol(req,res){
+const ModuleName = "permission";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers internos
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Devuelve el catálogo completo como un mapa: nombre → id */
+async function getCatalogMap() {
+    const catalog = await PermissionCatalog.findAll({ attributes: ["id", "name"] });
+    const nameToId = {};
+    const idToName = {};
+    catalog.forEach(c => {
+        nameToId[c.name] = c.id;
+        idToName[c.id]   = c.name;
+    });
+    return { nameToId, idToName, catalog };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Endpoints
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /getPermissions/:id
+ * Devuelve los permisos asignados a un rol, con el listado completo del catálogo.
+ * Respuesta: { data: [{ id, permiss }], allPermissions: [...] }
+ * — el frontend sigue leyendo data[].permiss como antes.
+ */
+async function getPermissRol(req, res) {
     try {
-        const id = req.params.id;
-        const permiss = await conection.execute(`select p.id,u.name as userName,r.name,m.module,p.permiss from user u join rol r on u.rol = r.id join permission p on p.rol = r.id join module m on m.id = p.module join company c on c.id = u.company where p.company = ? order by p.id desc`, [id]);
+        const rolId = req.params.id;
 
-        if(permiss){
-            res.status(httpStatus.OK).json({
-                data: permiss[0],
-                module: Module
+        const { idToName, catalog } = await getCatalogMap();
+
+        const privileges = await Permission.findAll({
+            where: { rol: rolId },
+            attributes: ["id", "id_permiso"],
+        });
+
+        // Transformar a formato que el frontend ya conoce: { id, permiss }
+        const data = privileges.map(p => ({
+            id: p.id,
+            permiss: idToName[p.id_permiso] || null,
+        }));
+
+        const allPermissions = catalog.map(c => c.name);
+
+        res.status(httpStatus.OK).json({
+            data,
+            allPermissions,
+            module: ModuleName,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message, module: ModuleName });
+    }
+}
+
+/**
+ * POST /syncPermissions
+ * Reemplaza todos los permisos de un rol.
+ * Body: { rolId, company, permissions: ["Crear ítems", "Crear productos", ...] }
+ */
+async function syncPermissions(req, res) {
+    try {
+        const { rolId, company, permissions } = req.body;
+
+        if (!rolId || !company || !Array.isArray(permissions)) {
+            return res.status(httpStatus.BAD_REQUEST).json({
+                message: "rolId, company y permissions[] son requeridos",
+                module: ModuleName,
             });
         }
-    } catch (error) {
-        console.error(error);
-        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-            message: `Error interno en el servidor: ${error}`,
-            module: Module,
-        });
-    }
-};
 
-async function savePermission(req, res){
-    try {
-        const { permiss, modules, rol, company } = req.body;
-        const save = await conection.execute(`INSERT INTO permission (permiss, module, rol ) VALUES (?,?,?,?)`,[permiss, modules, rol, company]);
-        if(save){
-            res.status(httpStatus.CREATED).json({
-                message: 'Registro creado',
-                module: Module
-            })
+        // Verificar que el rol existe
+        const rol = await Rol.findByPk(rolId);
+        if (!rol) {
+            return res.status(httpStatus.NOT_FOUND).json({ message: "Rol no encontrado", module: ModuleName });
         }
-    } catch (error) {
-        console.error(error);
-        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-            message: `Error interno en el servidor: ${error}`,
-            module: Module,
-        });
-    }
-};
 
-async function updatePermission(req, res){
-    try {
-        const { permiss, modules, rol } = req.body;
-        const id = req.params.id;
+        const { nameToId } = await getCatalogMap();
 
-        const updatePermiss = await conection.execute(`UPDATE permission SET permiss=?, module=?, rol=? WHERE id = ?`,[permiss, modules, rol, id]);
+        // Filtrar solo nombres que existan en el catálogo
+        const validPermissions = permissions.filter(p => nameToId[p]);
 
-        if(updatePermiss){
-            res.status(httpStatus.OK).json({
-                message: 'Registro actualizado',
-                module: Module
-            })
+        // Reemplazar todos los privilegios del rol
+        await Permission.destroy({ where: { rol: rolId, company } });
+
+        if (validPermissions.length > 0) {
+            const records = validPermissions.map(p => ({
+                rol: rolId,
+                company,
+                id_permiso: nameToId[p],
+            }));
+            await Permission.bulkCreate(records);
         }
+
+        res.status(httpStatus.OK).json({
+            message: "Permisos actualizados correctamente",
+            permissions: validPermissions,
+            module: ModuleName,
+        });
     } catch (error) {
         console.error(error);
-        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-            message: `Error interno en el servidor: ${error}`,
-            module: Module,
-        });
+        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message, module: ModuleName });
     }
-};
+}
 
-async function deletePermission(req, res){
+/**
+ * GET /getMyPermissions
+ * Retorna todos los permisos del usuario autenticado (según su rol).
+ * Respuesta: { permissions: ["Crear ítems", ...], rolName, isAdmin, allPermissions }
+ */
+async function getMyPermissions(req, res) {
     try {
-        const id = req.params.id;
+        const { rolId, company } = req.tokenData;
 
-        const deletePermiss = await conection.execute(`DELETE FROM permission WHERE id = ?`,[id]);
+        const { idToName, catalog } = await getCatalogMap();
 
-        if(deletePermiss){
-            res.status(httpStatus.OK).json({
-                message:" Registro eliminado",
-                module: Module
-            })
-        }
+        const privileges = await Permission.findAll({
+            where: { rol: rolId, company },
+            attributes: ["id_permiso"],
+        });
+
+        const permissList = privileges.map(p => idToName[p.id_permiso]).filter(Boolean);
+        const rol = await Rol.findOne({ where: { id: rolId } });
+
+        return res.status(httpStatus.OK).json({
+            permissions: permissList,
+            rolName: rol ? rol.name : null,
+            isAdmin: rol ? rol.name === "Administrador" : false,
+            allPermissions: catalog.map(c => c.name),
+        });
     } catch (error) {
         console.error(error);
-        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-            message: `Error interno en el servidor: ${error}`,
-            module: Module,
-        });
+        res.status(httpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message, module: ModuleName });
     }
 }
 
 module.exports = {
     getPermissRol,
-    savePermission,
-    updatePermission,
-    deletePermission
-}
+    syncPermissions,
+    getMyPermissions,
+};

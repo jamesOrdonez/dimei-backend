@@ -1,211 +1,98 @@
-const conection = require("../db/conection");
 const httpStatus = require("http-status");
+const Item = require("../models/item");
+const ItemGroup = require("../models/itemGroup");
+const UnitOfMeasure = require("../models/unitOfMeasure");
+const Client = require("../models/clients");
 const Module = "item";
+const { Op } = require("sequelize");
+const fs = require("fs");
+const path = require("path");
+const uploadsDir = path.join(__dirname, "../../uploads");
+const itemUploadsDir = path.join(uploadsDir, "items");
 
+// Ensure uploads directory exists
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Ensure items uploads directory exists
+if (!fs.existsSync(itemUploadsDir)) {
+  fs.mkdirSync(itemUploadsDir, { recursive: true });
+}
+
+// Crear item
 async function saveItems(req, res) {
   try {
-    const {
-      description,
-      amount,
-      group_item,
-      position1,
-      position2,
-      position3,
-      price,
-      variable,
-      value1,
-      mathOperation,
-      value2,
-      unitOfMeasure,
-      user,
-      company,
-    } = req.body;
+    let img = null;
+    if (req.file) {
+      const ext = path.extname(req.file.originalname);
+      img = `item-${Date.now()}${ext}`;
+      fs.writeFileSync(path.join(itemUploadsDir, img), req.file.buffer);
+    }
 
-    const img = req.file ? req.file.buffer : null;
+    const item = await Item.create({ ...req.body, img });
 
-    const safe = (v) => {
-      if (v === undefined || v === "" || Number.isNaN(v)) return null;
-      return v;
-    };
-
-    const [result] = await conection.execute(
-      `
-      INSERT INTO item (
-        description,
-        amount,
-        group_item,
-        position1,
-        position2,
-        position3,
-        price,
-        variable,
-        value1,
-        mathOperation,
-        value2,
-        unitOfMeasure,
-        user,
-        company,
-        img
-      )
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-      `,
-      [
-        safe(description),
-        safe(amount),
-        safe(group_item),
-        safe(position1),
-        safe(position2),
-        safe(position3),
-        safe(price),
-        safe(variable),
-        safe(value1),
-        safe(mathOperation),
-        safe(value2),
-        safe(unitOfMeasure),
-        safe(user),
-        safe(company),
-        img,
-      ],
-    );
-
-    return res.status(201).json({
+    res.status(httpStatus.CREATED).json({
       message: "Registro creado",
-      id: result.insertId,
+      module: Module,
+      data: item,
     });
   } catch (error) {
     console.error("❌ ERROR AL INSERTAR ITEM:", error);
-    return res.status(500).json({
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
       message: "Error interno en el servidor",
       error: error.message,
-    });
-  }
-}
-
-async function getItems(req, res) {
-  try {
-    const id = req.params.id;
-
-    const [rows] = await conection.execute(
-      `
-      SELECT 
-        i.id,
-        i.description,
-        i.amount,
-        ig.name AS group_name,
-        i.position1,
-        i.position2,
-        i.position3,
-        i.price,
-        i.variable,
-        i.value1,
-        i.mathOperation,
-        i.value2,
-        u.unitOfMeasure
-      FROM item i
-      LEFT JOIN unitofmeasure u ON u.id = i.unitOfMeasure
-      LEFT JOIN item_group ig ON ig.id = i.group_item
-      WHERE i.company = ?
-      ORDER BY i.id DESC
-      `,
-      [id],
-    );
-
-    return res.status(200).json({ data: rows });
-  } catch (error) {
-    return res.status(500).json({ message: "Error interno", error });
-  }
-}
-
-async function getOneItem(req, res) {
-  try {
-    const id = req.params.id;
-    const item = await conection.execute(`SELECT * FROM item WHERE id = ?`, [
-      id,
-    ]);
-    if (item.length > 0) {
-      res.status(httpStatus.OK).json({
-        data: item,
-        module: Module,
-      });
-    } else {
-      res.status(httpStatus.NOT_FOUND).json({
-        message: "Item not found",
-        module: Module,
-      });
-    }
-  } catch (error) {
-    console.log(error);
-    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: `Error interno en el servidor: ${error}`,
       module: Module,
     });
   }
 }
 
-async function updateItem(req, res) {
+// Obtener todos los items de una compañía
+async function getItems(req, res) {
   try {
-    const { id } = req.params;
-
-    const fields = [
-      "description",
-      "amount",
-      "group_item",
-      "position1",
-      "position2",
-      "position3",
-      "price",
-      "variable",
-      "value1",
-      "mathOperation",
-      "value2",
-      "unitOfMeasure",
-    ];
-
-    const updates = [];
-    const values = [];
-
-    fields.forEach((field) => {
-      let value = req.body[field];
-      console.log("img:" + value);
-      if (value === undefined) return;
-
-      if (value === null || value === "" || value === "undefined") {
-        value = null;
-      }
-
-      if (field === "variable" && value !== null) {
-        value = Number(value);
-      }
-
-      updates.push(`${field} = ?`);
-      values.push(value);
+    const companyId = req.params.id;
+    const items = await Item.findAll({
+      where: { company: companyId },
+      order: [[{ model: ItemGroup, as: "ItemGroup" }, "name", "ASC"]],
+      include: [
+        { model: ItemGroup, attributes: ["id", "name"], as: "ItemGroup" },
+        { model: UnitOfMeasure, attributes: ["id", "unitOfMeasure"], as: "UnitOfMeasure" },
+        { model: Client, attributes: ["id", "nombre"], as: "Proveedor" },
+      ],
     });
 
-    if (req.file) {
-      updates.push("img = ?");
-      values.push(req.file.buffer);
-    }
+    res.status(httpStatus.OK).json({ data: items, module: Module });
+  } catch (error) {
+    console.error(error);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: "Error interno en el servidor",
+      error: error.message,
+      module: Module,
+    });
+  }
+}
 
-    console.log(req.file);
-    if (updates.length === 0) {
-      return res.status(400).json({
-        message: "No hay datos para actualizar",
+// Obtener un item por ID
+async function getOneItem(req, res) {
+  try {
+    const id = req.params.id;
+    const item = await Item.findByPk(id, {
+      include: [
+        { model: ItemGroup, attributes: ["id", "name"], as: "ItemGroup" },
+        { model: UnitOfMeasure, attributes: ["id", "unitOfMeasure"], as: "UnitOfMeasure" },
+        { model: Client, attributes: ["id", "nombre"], as: "Proveedor" },
+      ],
+    });
+
+    if (!item) {
+      return res.status(httpStatus.NOT_FOUND).json({
+        message: "Item no encontrado",
         module: Module,
       });
     }
 
-    values.push(id);
-
-    const sql = `
-      UPDATE item
-      SET ${updates.join(", ")}
-      WHERE id = ?
-    `;
-
-    await conection.execute(sql, values);
-
     res.status(httpStatus.OK).json({
-      message: "Registro actualizado correctamente",
+      data: item,
       module: Module,
     });
   } catch (error) {
@@ -217,97 +104,165 @@ async function updateItem(req, res) {
   }
 }
 
-async function deleteItem(req, res) {
+// Actualizar item
+async function updateItem(req, res) {
   try {
     const id = req.params.id;
+    const updates = { ...req.body };
 
-    const deleteItem = await conection.execute(
-      `DELETE FROM item WHERE id = ?`,
-      [id],
-    );
-    if (deleteItem) {
-      res.status(httpStatus.OK).json({
-        message: "Registro eliminado",
+    if (req.file) {
+      // Get current item to delete old image
+      const currentItem = await Item.findByPk(id);
+      if (currentItem && currentItem.img) {
+        const oldPath = path.join(itemUploadsDir, currentItem.img);
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+
+      const ext = path.extname(req.file.originalname);
+      const filename = `item-${Date.now()}${ext}`;
+      fs.writeFileSync(path.join(itemUploadsDir, filename), req.file.buffer);
+      updates.img = filename;
+    }
+
+    const [updated] = await Item.update(updates, { where: { id } });
+
+    if (!updated) {
+      return res.status(httpStatus.NOT_FOUND).json({
+        message: "No se detectaron cambios en el registro",
+        module: Module,
       });
     }
+
+    const updatedItem = await Item.findByPk(id, {
+      include: [
+        { model: ItemGroup, attributes: ["id", "name"], as: "ItemGroup" },
+        { model: UnitOfMeasure, attributes: ["id", "unitOfMeasure"], as: "UnitOfMeasure" },
+        { model: Client, attributes: ["id", "nombre"], as: "Proveedor" },
+      ],
+    });
+
+    res.status(httpStatus.OK).json({
+      message: "Registro actualizado",
+      data: updatedItem,
+      module: Module,
+    });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: `Error interno en el servidor: ${error}`,
+      message: "Error interno en el servidor",
       module: Module,
     });
   }
 }
 
+// Eliminar item
+async function deleteItem(req, res) {
+  try {
+    const id = req.params.id;
+
+    // Get item to delete physical file
+    const item = await Item.findByPk(id);
+    if (item && item.img) {
+      const filePath = path.join(itemUploadsDir, item.img);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }
+
+    const deleted = await Item.destroy({ where: { id } });
+
+    if (!deleted) {
+      return res.status(httpStatus.NOT_FOUND).json({
+        message: "Item no encontrado",
+        module: Module,
+      });
+    }
+
+    res.status(httpStatus.OK).json({
+      message: "Registro eliminado",
+      module: Module,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: "Error interno en el servidor",
+      module: Module,
+    });
+  }
+}
+
+// Entrada de items (sumar cantidad)
 async function entranceItems(req, res) {
   try {
     const id = req.params.id;
     const { entranceAmount } = req.body;
 
-    console.log(entranceAmount);
+    const item = await Item.findByPk(id);
+    if (!item) return res.status(httpStatus.NOT_FOUND).json({ message: "Item no encontrado", module: Module });
 
-    const response = await conection.execute(
-      `update item set amount = (amount + ?) where id = ?`,
-      [entranceAmount, id],
-    );
+    const currentAmount = Number(item.amount || 0);
+    const addAmount = Number(entranceAmount || 0);
+    const newAmount = currentAmount + addAmount;
 
-    if (response) {
-      res.status(httpStatus.OK).json({
-        message: "Registro creado",
-        module: Module,
-      });
-    }
+    await item.update({ amount: newAmount });
+
+    res.status(httpStatus.OK).json({
+      message: "Cantidad actualizada",
+      module: Module,
+      data: item,
+    });
   } catch (error) {
+    console.error("❌ ERROR EN ENTRADA DE ITEMS:", error);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: "Error interno en el servidor: " + error,
+      message: "Error interno en el servidor",
       module: Module,
     });
   }
 }
 
+// Salida de items (restar cantidad)
 async function exitItems(req, res) {
   try {
     const id = req.params.id;
-    const { entranceAmount } = req.body;
+    const { exitAmount } = req.body;
 
-    const response = await conection.execute(
-      `update item set amount = (amount - ?) where id = ?`,
-      [entranceAmount, id],
-    );
+    const item = await Item.findByPk(id);
+    if (!item) return res.status(httpStatus.NOT_FOUND).json({ message: "Item no encontrado", module: Module });
 
-    if (response) {
-      res.status(httpStatus.OK).json({
-        message: "Registro actualizado",
-        module: Module,
-      });
-    }
+    const currentAmount = Number(item.amount || 0);
+    const subAmount = Number(exitAmount || 0);
+    const newAmount = currentAmount - subAmount;
+
+    await item.update({ amount: newAmount });
+
+    res.status(httpStatus.OK).json({
+      message: "Cantidad actualizada",
+      module: Module,
+      data: item,
+    });
   } catch (error) {
+    console.error("❌ ERROR EN SALIDA DE ITEMS:", error);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: "Error interno en el servidor: " + error,
+      message: "Error interno en el servidor",
       module: Module,
     });
   }
 }
 
-//IMG
+// Obtener imagen
 async function getItemImage(req, res) {
   try {
-    const { id } = req.params;
+    const id = req.params.id;
+    const item = await Item.findByPk(id, { attributes: ["img"] });
 
-    const [[item]] = await conection.execute(
-      "SELECT img FROM item WHERE id = ?",
-      [id],
-    );
+    if (!item || !item.img) return res.status(404).end();
 
-    if (!item || !item.img) {
-      return res.status(404).end();
-    }
+    const filePath = path.join(itemUploadsDir, item.img);
+    if (!fs.existsSync(filePath)) return res.status(404).end();
 
-    res.setHeader("Content-Type", "image/jpeg");
-    res.setHeader("Cache-Control", "public, max-age=86400"); // cache 1 día
-    res.send(item.img);
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.sendFile(filePath);
   } catch (error) {
-    res.status(500).json({ message: "Error interno" });
+    console.error(error);
+    res.status(500).json({ message: "Error interno", error });
   }
 }
 

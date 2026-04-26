@@ -1,25 +1,28 @@
-const conection = require("../db/conection");
 const httpStatus = require("http-status");
-const Module = "product";
+const Product = require("../models/product");
+const ModuleName = "product";
+const ItemProduct = require("../models/item_product");
+const Item = require("../models/item");
+const GroupProduct = require("../models/group_product");
 
 async function getproduct(req, res) {
   try {
-    const id = req.params.id;
-    const product = await conection.execute(
-      `SELECT * FROM product WHERE company = ? ORDER BY 1 DESC`,
-      [id]
-    );
-    if (product) {
-      res.status(httpStatus.OK).json({
-        data: product[0],
-        module: Module,
-      });
-    }
+    const companyId = req.params.id;
+    const products = await Product.findAll({
+      where: { company: companyId },
+      include: [{ model: GroupProduct, as: "group_product" }],
+      order: [["id", "DESC"]],
+    });
+
+    res.status(httpStatus.OK).json({
+      data: products,
+      module: ModuleName,
+    });
   } catch (error) {
     console.error(error);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: `Error interno en el servidor: ${error}`,
-      module: Module,
+      message: `Error interno en el servidor: ${error.message}`,
+      module: ModuleName,
     });
   }
 }
@@ -27,101 +30,159 @@ async function getproduct(req, res) {
 async function getOneProduct(req, res) {
   try {
     const id = req.params.id;
-    const data = conection.execute(`SELECT * FROM product WHERE id = ?`, [id]);
-    if (data) {
-      res.status(httpStatus.OK).json({
-        data: data,
-        module: Module,
+    const productInstance = await Product.findByPk(id, {
+      include: [
+        {
+          model: ItemProduct,
+          attributes: [['item', 'id'], 'quantity'],
+          as: 'productItem',
+          include: [{
+            model: Item,
+            as: 'itemData',
+            attributes: ['group_item']
+          }]
+        }
+      ]
+    });
+
+    if (!productInstance) {
+      return res.status(httpStatus.NOT_FOUND).json({
+        message: "Producto no encontrado",
+        module: ModuleName,
       });
     }
+
+    const product = productInstance.get({ plain: true });
+    product.net_items = product.productItem;
+
+    // Set group_item from the first item if exists
+    if (product.net_items && product.net_items.length > 0) {
+      product.group_item = product.net_items[0].itemData?.group_item;
+      // Cleanup itemData after getting group_item
+      product.net_items.forEach(item => delete item.itemData);
+    }
+
+    delete product.productItem;
+
+    res.status(httpStatus.OK).json({
+      data: product,
+      module: ModuleName,
+    });
   } catch (error) {
     console.error(error);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: `Error interno en el servidor: ${error}`,
-      module: Module,
+      message: `Error interno en el servidor: ${error.message}`,
+      module: ModuleName,
     });
   }
 }
 
 async function saveproduct(req, res) {
   try {
-    const { name, description, user, company } = req.body;
+    const data = req.body;
 
-    const [result] = await conection.execute(
-      `INSERT INTO product (name, description, user, company) VALUES (?,?,?,?)`,
-      [name, description, user, company]
-    );
+    const newProduct = await Product.create(data);
 
-    return res.status(httpStatus.CREATED).json({
+    if (data.net_items && data.net_items.length > 0) {
+
+      const items = data.net_items.map(item => ({
+        product: newProduct.id,
+        item: item.id,
+        quantity: item.quantity,
+        company: data.company
+      }));
+
+      await ItemProduct.bulkCreate(items);
+    }
+
+    res.status(httpStatus.CREATED).json({
       message: "Registro creado",
-      data: {
-        id: result.insertId, // 👈 ID del producto
-      },
-      module: Module,
+      data: { id: newProduct.id },
+      module: ModuleName
     });
+
   } catch (error) {
     console.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: `Error interno en el servidor`,
+
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: "Error interno en el servidor",
       error: error.message,
-      module: Module,
+      module: ModuleName
     });
   }
 }
 
 async function updateProduct(req, res) {
   try {
-    const { name, description } = req.body;
     const id = req.params.id;
+    const data = req.body;
 
-    const update = await conection.execute(
-      `UPDATE product SET name=?, description=? where id=?`,
-      [name, description, id]
-    );
-    if (update) {
-      res.status(httpStatus.OK).json({
-        message: "Registro actualizado",
-        module: Module,
+    const productToUpdate = await Product.findByPk(id);
+
+    if (!productToUpdate) {
+      return res.status(httpStatus.NOT_FOUND).json({
+        message: "Producto no encontrado",
+        module: ModuleName,
       });
     }
+
+    await Product.update(data, { where: { id } });
+
+    if (data.net_items) {
+      await ItemProduct.destroy({ where: { product: id } });
+
+      if (data.net_items.length > 0) {
+        const items = data.net_items.map(item => ({
+          product: id,
+          item: item.id,
+          quantity: item.quantity,
+          company: data.company
+        }));
+
+        await ItemProduct.bulkCreate(items);
+      }
+    }
+
+    const updatedProduct = await Product.findByPk(id);
+
+    res.status(httpStatus.OK).json({
+      message: "Registro actualizado",
+      module: ModuleName,
+      data: updatedProduct,
+    });
   } catch (error) {
     console.error(error);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      message: `Error interno en el servidor: ${error}`,
-      module: Module,
+      message: `Error interno en el servidor: ${error.message}`,
+      module: ModuleName,
     });
   }
 }
 
 async function deleteProduct(req, res) {
   try {
-    const { id } = req.params;
+    const id = req.params.id;
 
-    // Eliminar relación primero (si existe)
-    await conection.execute("DELETE FROM item_product WHERE product = ?", [id]);
+    await ItemProduct.destroy({ where: { product: id } });
 
-    // Eliminar producto
-    const [result] = await conection.execute(
-      "DELETE FROM product WHERE id = ?",
-      [id]
-    );
+    const deleted = await Product.destroy({ where: { id } });
 
-    if (result.affectedRows === 0) {
+    if (!deleted) {
       return res.status(httpStatus.NOT_FOUND).json({
         message: "Producto no encontrado",
-        module: Module,
+        module: ModuleName,
       });
     }
 
-    return res.status(httpStatus.OK).json({
+    res.status(httpStatus.OK).json({
       message: "Registro eliminado correctamente",
-      module: Module,
+      module: ModuleName,
     });
   } catch (error) {
     console.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
       message: "Error interno en el servidor",
-      module: Module,
+      module: ModuleName,
     });
   }
 }

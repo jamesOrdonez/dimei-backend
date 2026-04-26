@@ -1,45 +1,44 @@
 const httpStatus = require("http-status");
-const conection = require("../db/conection");
+const EquipmentType = require("../models/equipmenttype");
 const Module = "equipmenttype";
 
 async function saveEqType(req, res) {
     try {
         const { equipmentType, company } = req.body;
+        const eqType = await EquipmentType.create({ equipmentType, company });
 
-        const save = conection.execute(`INSERT INTO ${Module} (equipmentType, company) VALUES (?, ?)`, [equipmentType, company]);
-        if (save) {
-            res.status(httpStatus.OK).json({
-                message: "Registro creado",
-                module: Module
-            })
-        }
-
+        res.status(httpStatus.OK).json({
+            message: "Registro creado",
+            module: Module,
+            data: eqType,
+        });
     } catch (error) {
-        console.log(error);
+        console.error(error);
         res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-            message: `Error interno en el servidor: ${error}`,
-            module: Module
-        })
+            message: `Error interno en el servidor: ${error.message}`,
+            module: Module,
+        });
     }
-};
+}
 
 async function getEqType(req, res) {
     try {
         const id = req.params.id;
-        const data = conection.execute(`SELECT * FROM ${Module} WHERE company = ?`,[id]);
+        const data = await EquipmentType.findAll({
+            where: { company: id },
+            order: [["id", "DESC"]],
+        });
 
-        if(data){
-            res.status(httpStatus.OK).json({
-                data: data[0],
-                module: Module
-            })
-        }
+        res.status(httpStatus.OK).json({
+            data,
+            module: Module,
+        });
     } catch (error) {
-        console.log(error);
+        console.error(error);
         res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-            message: `Error interno en el servidor: ${error}`,
-            module: Module
-        })
+            message: `Error interno en el servidor: ${error.message}`,
+            module: Module,
+        });
     }
 }
 
@@ -48,41 +47,54 @@ async function updateEqType(req, res) {
         const { equipmentType } = req.body;
         const id = req.params.id;
 
-        const update = await conection.execute(`UPDATE ${Module} SET equipmentType = ? WHERE id = ?`,[equipmentType, id]);
+        const [updated] = await EquipmentType.update(
+            { equipmentType },
+            { where: { id } }
+        );
 
-        if (update) {
+        if (updated) {
+            const updatedEqType = await EquipmentType.findByPk(id);
             res.status(httpStatus.OK).json({
                 message: "Registro actualizado.",
                 module: Module
-            })
+            });
+        } else {
+            res.status(httpStatus.NOT_FOUND).json({
+                message: "Registro no encontrado.",
+                module: Module,
+            });
         }
     } catch (error) {
-        console.log(error);
+        console.error(error);
         res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-            message: `Error interno en el servidor: ${error}`,
-            module: Module
-        })
+            message: `Error interno en el servidor: ${error.message}`,
+            module: Module,
+        });
     }
 }
 
 async function deleteEqType(req, res) {
     try {
         const id = req.params.id;
+        const deleted = await EquipmentType.destroy({ where: { id } });
 
-        const deleteEqType = await conection.execute(`DELETE FROM ${Module} WHERE id = ?`,[id]);
-
-        if (deleteEqType) {
+        if (deleted) {
             res.status(httpStatus.OK).json({
                 message: "Registro eliminado.",
-                module: Module
-            })
+                module: Module,
+            });
+        } else {
+            res.status(httpStatus.NOT_FOUND).json({
+                message: "Registro no encontrado.",
+                module: Module,
+            });
         }
     } catch (error) {
-        console.log(error);
+        console.error(error);
         res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-            message: `Error interno en el servidor: ${error}`,
-            module: Module
-        })
+            message: `Error interno en el servidor: ${error.message}`,
+            module: Module,
+        });
     }
 }
 
@@ -90,5 +102,5 @@ module.exports = {
     saveEqType,
     getEqType,
     updateEqType,
-    deleteEqType
-}
+    deleteEqType,
+};

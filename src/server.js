@@ -1,33 +1,30 @@
+require("dotenv").config();
 const express = require("express");
-const body = require("body-parser");
 const cors = require("cors");
+const path = require("path");
 
 const app = express();
-const PORT = 8080;
+const PORT = process.env.PORT;
 
 const v1Routes = require("./routes");
 
-// Middleware
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// Configuración CORS
 app.use(
   cors({
-    origin: "https://vps.equiposdimei.com",
-    /*     origin: "http://localhost:3000", */
+    origin: process.env.CORS_ORIGIN,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-    credentials: true, // si envías cookies
+    credentials: true,
   }),
 );
 
-// Rutas
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use("/api/v1/", v1Routes);
-app.get("/", (req, res) => {
-  res.send("GET API DIMEI BACKEND ✅");
-});
 
-// Servidor
+app.get("/", (req, res) => {
+  res.send("GET API DIMEI BACKEND");
+});
 
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);

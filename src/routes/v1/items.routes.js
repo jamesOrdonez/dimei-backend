@@ -15,6 +15,7 @@ router
     protectedRoute(options),
     ItemController.saveItems,
   )
+  .get("/public/item/:id", ItemController.getOneItem)
   .get("/getItem/:id", ItemController.getItems)
   .get("/getItem/image/:id", ItemController.getItemImage)
   .get("/oneItem/:id", protectedRoute(options), ItemController.getOneItem)
