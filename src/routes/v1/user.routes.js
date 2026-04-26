@@ -12,6 +12,7 @@ router
   .get("/getUser/:id", protectedRoute(options), userController.getUser)
   .get("/getOneUser/:id", protectedRoute(options), userController.getOneUser)
   .put("/updateUser/:id", protectedRoute(options), userController.updateuser)
+  .put("/changePassword", protectedRoute(options), userController.changePassword)
   .delete(
     "/deleteUser/:id",
     protectedRoute(options),

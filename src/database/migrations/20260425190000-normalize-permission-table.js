@@ -7,7 +7,8 @@ module.exports = {
     //    Sincronizar cualquier registro que aún tenga id_permiso NULL
     await queryInterface.sequelize.query(`
       UPDATE permission p
-      INNER JOIN permission_catalog pc ON p.permiss = pc.name
+      INNER JOIN permission_catalog pc
+        ON p.permiss COLLATE utf8mb4_unicode_ci = pc.name COLLATE utf8mb4_unicode_ci
       SET p.id_permiso = pc.id
       WHERE p.id_permiso IS NULL
     `);

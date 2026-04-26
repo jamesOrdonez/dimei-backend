@@ -25,4 +25,14 @@ module.exports = {
     dialect: 'mysql',
     port: process.env.DB_PORT || 3306,
   },
+  // BD espejo de producción para integración/pruebas
+  integracion: {
+    username: 'root',
+    password: 'Qwerty38/*',
+    database: 'integracion_dimei',
+    host: '45.79.25.250',
+    dialect: 'mysql',
+    port: 3306,
+  },
 };
+

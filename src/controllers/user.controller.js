@@ -155,10 +155,50 @@ async function deleteUser(req, res) {
   }
 }
 
+async function changePassword(req, res) {
+  try {
+    const { id, password } = req.body;
+
+    if (!id || !password) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        message: "El id y la contraseña son requeridos",
+        module: Module,
+      });
+    }
+
+    const passEncripted = await bcrypt.hash(password, 14);
+
+    const [updated] = await User.update(
+      { password: passEncripted },
+      { where: { id } }
+    );
+
+    if (!updated) {
+      return res.status(httpStatus.NOT_FOUND).json({
+        message: "Usuario no encontrado",
+        module: Module,
+      });
+    }
+
+    return res.status(httpStatus.OK).json({
+      message: "Contraseña actualizada exitosamente",
+      module: Module,
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: "Error interno en el servidor: " + error.message,
+      module: Module,
+    });
+  }
+}
+
 module.exports = {
   saveUser,
   getUser,
   getOneUser,
   updateuser,
   deleteUser,
-};
+  changePassword,
+};
