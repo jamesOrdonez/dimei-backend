@@ -124,14 +124,16 @@ async function updateItem(req, res) {
       updates.img = filename;
     }
 
-    const [updated] = await Item.update(updates, { where: { id } });
-
-    if (!updated) {
+    // Check if record exists first to be more accurate with errors
+    const itemToUpdate = await Item.findByPk(id);
+    if (!itemToUpdate) {
       return res.status(httpStatus.NOT_FOUND).json({
-        message: "No se detectaron cambios en el registro",
+        message: "Item no encontrado",
         module: Module,
       });
     }
+
+    await itemToUpdate.update(updates);
 
     const updatedItem = await Item.findByPk(id, {
       include: [
