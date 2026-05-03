@@ -26,6 +26,8 @@ const tool = require('./v1/tool.routes');
 const toolGroup = require('./v1/toolGroup.routes');
 const toolUnitOfMeasure = require('./v1/toolUnitOfMeasure.routes');
 const toolLoan = require('./v1/toolLoan.routes');
+const question = require('./v1/question.routes');
+const optionTemplateGroup = require('./v1/optionTemplateGroup.routes');
 
 routes.use(User);
 routes.use(Login);
@@ -52,5 +54,7 @@ routes.use(tool);
 routes.use(toolGroup);
 routes.use(toolUnitOfMeasure);
 routes.use(toolLoan);
+routes.use(question);
+routes.use(optionTemplateGroup);
 
 module.exports = routes;
