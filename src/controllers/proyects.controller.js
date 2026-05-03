@@ -21,7 +21,10 @@ const Remision = require("../models/remision");
 async function save(req, res) {
   try {
     const data = req.body;
-    const saved = await model.create(data);
+    const saved = await model.create({
+      ...data,
+      tipo: data.tipo || 'proyecto'
+    });
 
     if (saved) {
       res.status(httpStatus.OK).json({
@@ -41,9 +44,9 @@ async function save(req, res) {
 async function getProject(req, res) {
   try {
     const id = req.params.id;
-
+    const tipo = req.query.tipo || 'proyecto';
     const projects = await model.findAll({
-      where: { company: id },
+      where: { company: id, tipo: tipo },
       order: [["id", "DESC"]],
       include: [
         {
