@@ -78,9 +78,12 @@ async function getProject(req, res) {
 
       return {
         ...rest,
-        elevatorType: elevatorTypeData?.elevatorType || null,
-        typeDriveSystem: driveSystemData?.typeDriveSystem || null,
-        customer: customerData?.nombre || null,
+        elevatorType: data.elevatorType,
+        typeDriveSystem: data.typeDriveSystem,
+        customerId: data.customerId,
+        elevatorTypeName: elevatorTypeData?.elevatorType || null,
+        typeDriveSystemName: driveSystemData?.typeDriveSystem || null,
+        customerName: customerData?.nombre || null,
       };
     });
 
@@ -223,9 +226,12 @@ async function getOneProject(req, res) {
 
       return {
         ...rest,
-        elevatorType: elevatorTypeData?.elevatorType || null,
-        typeDriveSystem: driveSystemData?.typeDriveSystem || null,
-        customer: customerData?.nombre || null,
+        elevatorType: data.elevatorType,
+        typeDriveSystem: data.typeDriveSystem,
+        customerId: data.customerId,
+        elevatorTypeName: elevatorTypeData?.elevatorType || null,
+        typeDriveSystemName: driveSystemData?.typeDriveSystem || null,
+        customerName: customerData?.nombre || null,
         products: (productProyect || []).map((pp) => {
           const productItems = pp.productData?.productItem || [];
           const itemsData = productItems.map(pi => {
