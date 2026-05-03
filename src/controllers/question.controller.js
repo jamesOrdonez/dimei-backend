@@ -21,7 +21,7 @@ async function getQuestionGroups(req, res) {
     const { company } = req.params;
     const records = await QuestionGroup.findAll({
       where: { company },
-      order: [["id", "DESC"]],
+      order: [["sort_order", "ASC"], ["id", "ASC"]],
       include: [
         {
           model: Question,
@@ -134,6 +134,28 @@ async function deleteQuestion(req, res) {
   }
 }
 
+async function reorderQuestionGroups(req, res) {
+  try {
+    const { order } = req.body; // [{ id, sort_order }]
+    await Promise.all(order.map(({ id, sort_order }) => QuestionGroup.update({ sort_order }, { where: { id } })));
+    res.status(httpStatus.OK).json({ message: "Orden actualizado", module: Module });
+  } catch (error) {
+    console.error(error);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message, module: Module });
+  }
+}
+
+async function reorderQuestions(req, res) {
+  try {
+    const { order } = req.body; // [{ id, order }]
+    await Promise.all(order.map(({ id, order: ord }) => Question.update({ order: ord }, { where: { id } })));
+    res.status(httpStatus.OK).json({ message: "Orden actualizado", module: Module });
+  } catch (error) {
+    console.error(error);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message, module: Module });
+  }
+}
+
 module.exports = {
   getQuestionGroups,
   saveQuestionGroup,
@@ -142,4 +164,6 @@ module.exports = {
   saveQuestion,
   updateQuestion,
   deleteQuestion,
+  reorderQuestionGroups,
+  reorderQuestions,
 };

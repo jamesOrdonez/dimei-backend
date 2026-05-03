@@ -7,6 +7,7 @@ const QuestionGroup = sequelize.define(
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     name: { type: DataTypes.STRING(150), allowNull: false },
     company: { type: DataTypes.INTEGER, allowNull: false },
+    sort_order: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 0 },
   },
   { tableName: "question_group", timestamps: false }
 );

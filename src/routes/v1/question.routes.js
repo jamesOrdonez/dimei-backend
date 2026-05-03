@@ -11,6 +11,8 @@ router
   .delete("/deleteQuestionGroup/:id", protectedRoute(options), ctrl.deleteQuestionGroup)
   .post("/saveQuestion", protectedRoute(options), ctrl.saveQuestion)
   .put("/updateQuestion/:id", protectedRoute(options), ctrl.updateQuestion)
-  .delete("/deleteQuestion/:id", protectedRoute(options), ctrl.deleteQuestion);
+  .delete("/deleteQuestion/:id", protectedRoute(options), ctrl.deleteQuestion)
+  .post("/reorderQuestionGroups", protectedRoute(options), ctrl.reorderQuestionGroups)
+  .post("/reorderQuestions", protectedRoute(options), ctrl.reorderQuestions);
 
 module.exports = router;
