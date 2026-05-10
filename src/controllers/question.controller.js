@@ -39,6 +39,28 @@ async function getQuestionGroups(req, res) {
   }
 }
 
+async function getOneQuestionGroup(req, res) {
+  try {
+    const { id } = req.params;
+    const record = await QuestionGroup.findByPk(id, {
+      include: [
+        {
+          model: Question,
+          as: "questions",
+          order: [["order", "ASC"]],
+          separate: true,
+          include: [{ model: AnswerOption, as: "options", separate: true, order: [["id", "ASC"]] }],
+        },
+      ],
+    });
+    if (!record) return res.status(httpStatus.NOT_FOUND).json({ message: "Grupo no encontrado", module: Module });
+    res.status(httpStatus.OK).json({ data: record, module: Module });
+  } catch (error) {
+    console.error(error);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message, module: Module });
+  }
+}
+
 async function saveQuestionGroup(req, res) {
   try {
     const { name, company } = req.body;
@@ -158,6 +180,7 @@ async function reorderQuestions(req, res) {
 
 module.exports = {
   getQuestionGroups,
+  getOneQuestionGroup,
   saveQuestionGroup,
   updateQuestionGroup,
   deleteQuestionGroup,

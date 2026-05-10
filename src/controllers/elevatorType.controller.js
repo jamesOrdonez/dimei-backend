@@ -27,10 +27,18 @@ async function getType(req, res) {
   try {
     const id = req.params.id;
 
+    const QuestionGroup = require('../models/questionGroup');
     const data = await model.findAll({
       where: {
         company: id,
       },
+      include: [
+        {
+          model: QuestionGroup,
+          as: 'questionGroup',
+          attributes: ['id', 'name'],
+        }
+      ],
     });
 
     if (data) {

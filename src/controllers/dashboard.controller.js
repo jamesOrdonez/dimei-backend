@@ -15,12 +15,16 @@ async function getStats(req, res) {
                 'state',
                 [sequelize.fn('COUNT', sequelize.col('id')), 'count']
             ],
-            where: { company: companyId },
+            where: { 
+                company: companyId,
+                tipo: 'proyecto'
+            },
             group: ['state']
         });
 
         // 2. Total Counts for Widgets
-        const totalProjects = await Proyect.count({ where: { company: companyId } });
+        const totalProjects = await Proyect.count({ where: { company: companyId, tipo: 'proyecto' } });
+        const totalEquipments = await Proyect.count({ where: { company: companyId, tipo: 'equipo' } });
         const totalItems = await Item.count({ where: { company: companyId } });
         const totalRemissions = await Remision.count({ where: { company: companyId } });
         
@@ -59,6 +63,7 @@ async function getStats(req, res) {
                 count: Number(p.get('count'))
             })),
             totalProjects: Number(totalProjects),
+            totalEquipments: Number(totalEquipments),
             totalItems: Number(totalItems),
             totalRemissions: Number(totalRemissions),
             lowStockItems: Number(lowStockItems),

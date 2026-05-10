@@ -15,6 +15,8 @@ const ItemProduct = require("../models/item_product");
 const RemisionProduct = require("../models/remision_product");
 const RemisionItem = require("../models/remision_item");
 const Remision = require("../models/remision");
+const MaintenanceReport = require("../models/maintenanceReport");
+const User = require("../models/user");
 
 //* id del item/producto, nombre, cantidad, grupo
 
@@ -45,13 +47,18 @@ async function getProject(req, res) {
   try {
     const id = req.params.id;
     const tipo = req.query.tipo || 'proyecto';
+    const customerId = req.query.customerId;
+
+    const where = { company: id, tipo: tipo };
+    if (customerId) where.customerId = customerId;
+
     const projects = await model.findAll({
-      where: { company: id, tipo: tipo },
+      where,
       order: [["id", "DESC"]],
       include: [
         {
           model: ElevatorType,
-          attributes: ["id", "elevatorType"],
+          attributes: ["id", "elevatorType", "question_group_id"],
           as: "elevatorTypeData",
         },
         {
@@ -64,18 +71,24 @@ async function getProject(req, res) {
           attributes: ["id", "nombre"],
           as: "customerData",
         },
+        {
+          model: MaintenanceReport,
+          as: "maintenances",
+          include: [{ model: User, as: "technicianData", attributes: ["name"] }]
+        }
       ],
+      order: [["id", "DESC"], [{ model: MaintenanceReport, as: "maintenances" }, "date", "DESC"]],
     });
 
     const formattedProjects = projects.map((project) => {
       const data = project.toJSON();
+      const lastMaintenance = data.maintenances?.[0] || null;
 
       const {
         elevatorTypeData,
         driveSystemData,
         customerData,
-        customerId,
-        user,
+        maintenances,
         ...rest
       } = data;
 
@@ -87,6 +100,12 @@ async function getProject(req, res) {
         elevatorTypeName: elevatorTypeData?.elevatorType || null,
         typeDriveSystemName: driveSystemData?.typeDriveSystem || null,
         customerName: customerData?.nombre || null,
+        questionGroupId: elevatorTypeData?.question_group_id || null,
+        lastMaintenance: lastMaintenance ? {
+          id: lastMaintenance.id,
+          date: lastMaintenance.date,
+          technician: lastMaintenance.technicianData?.name || 'Desconocido'
+        } : null
       };
     });
 
@@ -113,7 +132,7 @@ async function getOneProject(req, res) {
       include: [
         {
           model: ElevatorType,
-          attributes: ["id", "elevatorType"],
+          attributes: ["id", "elevatorType", "question_group_id"],
           as: "elevatorTypeData",
         },
         {
@@ -233,6 +252,7 @@ async function getOneProject(req, res) {
         typeDriveSystem: data.typeDriveSystem,
         customerId: data.customerId,
         elevatorTypeName: elevatorTypeData?.elevatorType || null,
+        questionGroupId: elevatorTypeData?.question_group_id || null,
         typeDriveSystemName: driveSystemData?.typeDriveSystem || null,
         customerName: customerData?.nombre || null,
         products: (productProyect || []).map((pp) => {
