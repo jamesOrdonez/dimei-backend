@@ -2,11 +2,14 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.addColumn('rol', 'editable', {
-      type: Sequelize.BOOLEAN,
-      allowNull: false,
-      defaultValue: true,
-    });
+    const tableInfo = await queryInterface.describeTable('rol');
+    if (!tableInfo.editable) {
+      await queryInterface.addColumn('rol', 'editable', {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+      });
+    }
   },
 
   async down(queryInterface, Sequelize) {

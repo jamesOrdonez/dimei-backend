@@ -28,6 +28,8 @@ const toolUnitOfMeasure = require('./v1/toolUnitOfMeasure.routes');
 const toolLoan = require('./v1/toolLoan.routes');
 const question = require('./v1/question.routes');
 const optionTemplateGroup = require('./v1/optionTemplateGroup.routes');
+const technicianSignature = require('./v1/technicianSignature.routes');
+const maintenance = require('./v1/maintenance.routes');
 
 routes.use(User);
 routes.use(Login);
@@ -56,5 +58,7 @@ routes.use(toolUnitOfMeasure);
 routes.use(toolLoan);
 routes.use(question);
 routes.use(optionTemplateGroup);
+routes.use(technicianSignature);
+routes.use(maintenance);
 
 module.exports = routes;
