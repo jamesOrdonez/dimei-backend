@@ -23,6 +23,12 @@ const Rol = sequelize.define("Rol", {
     company: {
         type: DataTypes.INTEGER,
         allowNull: false,
+    },
+
+    editable: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
     }
 
 }, {

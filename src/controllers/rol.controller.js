@@ -5,9 +5,6 @@ const { Op } = require("sequelize");
 
 const ModuleName = "rol";
 
-// Roles base que no se pueden eliminar
-const BASE_ROLES = ["Almacenista", "Diseñador", "Administrador"];
-
 async function getRoles(req, res) {
     try {
         const { company } = req.params;
@@ -53,9 +50,9 @@ async function updateRol(req, res) {
             return res.status(httpStatus.NOT_FOUND).json({ message: "Rol no encontrado", module: ModuleName });
         }
 
-        // Roles base no pueden cambiar de nombre
-        if (BASE_ROLES.includes(rol.name) && name && name !== rol.name) {
-            return res.status(httpStatus.FORBIDDEN).json({ message: "No se puede renombrar un rol base", module: ModuleName });
+        // Si el rol no es editable (ej. Administrador, Técnicos, etc.), no se puede cambiar el nombre
+        if (rol.editable === false && name && name !== rol.name) {
+            return res.status(httpStatus.FORBIDDEN).json({ message: "No se puede renombrar un rol del sistema predefinido", module: ModuleName });
         }
 
         await rol.update({ name: name || rol.name });
@@ -75,7 +72,7 @@ async function deleteRol(req, res) {
             return res.status(httpStatus.NOT_FOUND).json({ message: "Rol no encontrado", module: ModuleName });
         }
 
-        if (BASE_ROLES.includes(rol.name)) {
+        if (rol.editable === false) {
             return res.status(httpStatus.FORBIDDEN).json({ message: "No se pueden eliminar los roles base del sistema", module: ModuleName });
         }
 
