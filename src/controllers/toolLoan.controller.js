@@ -109,20 +109,33 @@ async function getLoans(req, res) {
     }
 }
 
-// Cambiar estado del préstamo
+// Registrar devolución parcial o total de herramientas
 async function changeStatus(req, res) {
     const t = await sequelize.transaction();
     try {
         const { id } = req.params;
-        const { status, observations, fkUser } = req.body;
+        const { observations, fkUser, returnedItems } = req.body;
 
-        const validStatuses = ['Prestado', 'Devuelto', 'Devuelto Dañado', 'Perdido'];
-        if (!validStatuses.includes(status)) {
+        // Validar que venga al menos un ítem
+        if (!Array.isArray(returnedItems) || returnedItems.length === 0) {
             await t.rollback();
             return res.status(httpStatus.BAD_REQUEST).json({
-                message: `Estado inválido. Los estados permitidos son: ${validStatuses.join(', ')}`,
+                message: "Debe seleccionar al menos una herramienta para registrar la devolución.",
                 module: Module
             });
+        }
+
+        const validStatuses = ['Devuelto', 'Devuelto Dañado', 'Perdido'];
+
+        // Validar los estados recibidos
+        for (const item of returnedItems) {
+            if (!validStatuses.includes(item.status)) {
+                await t.rollback();
+                return res.status(httpStatus.BAD_REQUEST).json({
+                    message: `Estado inválido "${item.status}". Los estados permitidos son: ${validStatuses.join(', ')}`,
+                    module: Module
+                });
+            }
         }
 
         const loan = await ToolLoan.findByPk(id, { transaction: t });
@@ -131,25 +144,74 @@ async function changeStatus(req, res) {
             return res.status(httpStatus.NOT_FOUND).json({ message: "Préstamo no encontrado", module: Module });
         }
 
-        await loan.update({ status }, { transaction: t });
+        // Actualizar cada ítem devuelto
+        for (const item of returnedItems) {
+            const loanItem = await ToolLoanItem.findOne({
+                where: { id: item.loanItemId, tool_loan_id: id },
+                transaction: t,
+            });
 
-        await ToolLoanStatusHistory.create({
-            tool_loan_id: id,
-            status,
-            observations: observations || null,
-            changed_by: fkUser,
-            date: new Date(),
-        }, { transaction: t });
+            if (!loanItem) continue;
+
+            const newReturnedQty = Math.min(
+                (loanItem.returned_quantity || 0) + Number(item.returnQty),
+                loanItem.quantity
+            );
+
+            // Estado del ítem: si la cantidad devuelta cubre el total, se cierra; si no, sigue 'Prestado'
+            const itemFullyReturned = newReturnedQty >= loanItem.quantity;
+            const itemStatus = itemFullyReturned ? item.status : 'Prestado';
+
+            await loanItem.update({
+                returned_quantity: newReturnedQty,
+                status: itemStatus,
+            }, { transaction: t });
+
+            // Registrar en historial por cada ítem
+            await ToolLoanStatusHistory.create({
+                tool_loan_id: id,
+                status: itemStatus,
+                observations: observations
+                    ? `[Herramienta #${loanItem.tool_id}] ${observations}`
+                    : `Devolución de herramienta #${loanItem.tool_id} (cant: ${item.returnQty})`,
+                changed_by: fkUser,
+                date: new Date(),
+            }, { transaction: t });
+        }
+
+        // Recalcular el estado global del préstamo
+        const allItems = await ToolLoanItem.findAll({
+            where: { tool_loan_id: id },
+            transaction: t,
+        });
+
+        const allReturned = allItems.every(i => i.returned_quantity >= i.quantity);
+        const anyPrestado = allItems.some(i => i.status === 'Prestado');
+        const anyPerdido = allItems.some(i => i.status === 'Perdido');
+        const anyDanado = allItems.some(i => i.status === 'Devuelto Dañado');
+
+        let globalStatus = 'Prestado';
+        if (allReturned) {
+            if (anyPerdido) globalStatus = 'Perdido';
+            else if (anyDanado) globalStatus = 'Devuelto Dañado';
+            else globalStatus = 'Devuelto';
+        } else if (!anyPrestado && (anyPerdido || anyDanado)) {
+            // Todos procesados pero mezcla de estados (algunos devueltos, otros perdidos/dañados)
+            globalStatus = anyPerdido ? 'Perdido' : 'Devuelto Dañado';
+        }
+
+        await loan.update({ status: globalStatus }, { transaction: t });
 
         await t.commit();
 
         return res.status(httpStatus.OK).json({
-            message: "Estado actualizado correctamente",
+            message: "Devolución registrada correctamente",
+            globalStatus,
             module: Module
         });
     } catch (error) {
         await t.rollback();
-        console.error("Error al cambiar estado:", error);
+        console.error("Error al registrar devolución:", error);
         return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
             message: "Error interno en el servidor",
             error: error.message,

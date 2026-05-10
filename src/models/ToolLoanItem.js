@@ -6,6 +6,8 @@ const ToolLoanItem = sequelize.define("ToolLoanItem", {
     tool_loan_id: { type: DataTypes.INTEGER, allowNull: false },
     tool_id: { type: DataTypes.INTEGER, allowNull: false },
     quantity: { type: DataTypes.FLOAT, allowNull: false, defaultValue: 1 },
+    returned_quantity: { type: DataTypes.FLOAT, allowNull: false, defaultValue: 0 },
+    status: { type: DataTypes.STRING, allowNull: false, defaultValue: 'Prestado' },
 }, {
     tableName: "tool_loan_item",
     timestamps: false,
