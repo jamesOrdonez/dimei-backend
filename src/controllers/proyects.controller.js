@@ -441,6 +441,35 @@ async function getInventoryComparison(req, res) {
   }
 }
 
+async function update(req, res) {
+  try {
+    const { id } = req.params;
+    const data = req.body;
+
+    const updated = await model.update(data, {
+      where: { id }
+    });
+
+    if (updated[0] > 0) {
+      res.status(httpStatus.OK).json({
+        message: "Registro actualizado",
+        Module,
+      });
+    } else {
+      res.status(httpStatus.NOT_FOUND).json({
+        message: "Registro no encontrado o sin cambios",
+        Module,
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: `Error interno en el servidor: ${error}`,
+      Module,
+    });
+  }
+}
+
 async function updateState(req, res) {
   try {
     const { id } = req.params;
@@ -548,6 +577,7 @@ async function getSignedAct(req, res) {
 
 module.exports = {
   save,
+  update,
   getProject,
   getOneProject,
   getInventoryComparison,

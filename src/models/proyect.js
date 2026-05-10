@@ -56,6 +56,10 @@ const Proyect = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    nombre: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     tipo: {
       type: DataTypes.STRING(20),
       allowNull: false,

@@ -6,6 +6,7 @@ router
   .get("/getProjects/:id", controller.getProject)
   .get("/getOneProject/:id", controller.getOneProject)
   .post("/saveProject", controller.save)
+  .put("/updateProject/:id", controller.update)
   .get("/getInventoryComparison/:company", controller.getInventoryComparison)
   .patch("/updateProjectStatus/:id", controller.updateState)
   .post("/uploadSignedAct/:id", upload.single("signed_act"), controller.uploadSignedAct)
