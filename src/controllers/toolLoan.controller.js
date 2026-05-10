@@ -40,11 +40,48 @@ async function saveLoan(req, res) {
             date: new Date(),
         }, { transaction: t });
 
-        for (const tool of net_tools) {
+        for (const toolReq of net_tools) {
+            const toolDb = await Tool.findByPk(toolReq.id, { transaction: t });
+            if (!toolDb) {
+                await t.rollback();
+                return res.status(httpStatus.NOT_FOUND).json({
+                    message: `Herramienta con ID ${toolReq.id} no encontrada.`,
+                    module: Module
+                });
+            }
+
+            // Calcular cantidad actualmente prestada
+            // Sumamos (quantity - returned_quantity) de todos los items en préstamos activos
+            const activeLoanItems = await ToolLoanItem.findAll({
+                where: { tool_id: toolReq.id },
+                include: [{
+                    model: ToolLoan,
+                    as: 'toolLoan',
+                    where: { status: 'Prestado' }
+                }],
+                transaction: t
+            });
+
+            let currentlyLent = 0;
+            activeLoanItems.forEach(item => {
+                currentlyLent += (item.quantity - (item.returned_quantity || 0));
+            });
+
+            const available = (toolDb.amount || 0) - currentlyLent;
+            const requestedQty = toolReq.quantity || 1;
+
+            if (requestedQty > available) {
+                await t.rollback();
+                return res.status(httpStatus.BAD_REQUEST).json({
+                    message: `No hay suficiente stock para "${toolDb.description}". Disponible: ${available}, Solicitado: ${requestedQty}`,
+                    module: Module
+                });
+            }
+
             await ToolLoanItem.create({
                 tool_loan_id: loan.id,
-                tool_id: tool.id,
-                quantity: tool.quantity || 1,
+                tool_id: toolReq.id,
+                quantity: requestedQty,
             }, { transaction: t });
         }
 
@@ -94,6 +131,14 @@ async function getLoans(req, res) {
                         attributes: ['id', 'description'],
                         include: [{ model: ToolGroup, as: 'ToolGroup', attributes: ['id', 'name'] }]
                     }]
+                },
+                {
+                    model: ToolLoanStatusHistory,
+                    as: 'statusHistory',
+                    // Solo las entradas de devolución individual (tienen tool_id y qty)
+                    where: { tool_id: { [require('sequelize').Op.ne]: null } },
+                    required: false,
+                    include: [{ model: User, as: 'ChangedBy', attributes: ['id', 'name'] }]
                 }
             ]
         });
@@ -167,10 +212,12 @@ async function changeStatus(req, res) {
                 status: itemStatus,
             }, { transaction: t });
 
-            // Registrar en historial por cada ítem
+            // Registrar en historial: SIEMPRE el status real de la devolución
             await ToolLoanStatusHistory.create({
                 tool_loan_id: id,
-                status: itemStatus,
+                tool_id: loanItem.tool_id,
+                qty: Number(item.returnQty),
+                status: item.status,   // status real ('Devuelto', 'Devuelto Dañado', 'Perdido')
                 observations: observations
                     ? `[Herramienta #${loanItem.tool_id}] ${observations}`
                     : `Devolución de herramienta #${loanItem.tool_id} (cant: ${item.returnQty})`,

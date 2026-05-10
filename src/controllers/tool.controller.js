@@ -71,7 +71,8 @@ async function getTools(req, res) {
     
     const lentMap = {};
     activeLoans.forEach(item => {
-      lentMap[item.tool_id] = (lentMap[item.tool_id] || 0) + item.quantity;
+      const remaining = item.quantity - (item.returned_quantity || 0);
+      lentMap[item.tool_id] = (lentMap[item.tool_id] || 0) + remaining;
     });
 
     const formattedTools = tools.map(t => {
