@@ -102,6 +102,7 @@ async function getProject(req, res) {
         customerName: customerData?.nombre || null,
         questionGroupId: elevatorTypeData?.question_group_id || null,
         lastMaintenance: lastMaintenance ? {
+          id: lastMaintenance.id,
           date: lastMaintenance.date,
           technician: lastMaintenance.technicianData?.name || 'Desconocido'
         } : null

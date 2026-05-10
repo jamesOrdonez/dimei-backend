@@ -1,6 +1,8 @@
 const httpStatus = require("http-status");
 const MaintenanceReport = require("../models/maintenanceReport");
 const MaintenanceAnswer = require("../models/maintenanceAnswer");
+const Proyect = require("../models/proyect");
+const User = require("../models/user");
 const { base64ToFile } = require("../utils/fileUpload");
 
 async function saveMaintenanceReport(req, res) {
@@ -47,6 +49,52 @@ async function saveMaintenanceReport(req, res) {
   }
 }
 
+async function getMaintenanceReport(req, res) {
+  try {
+    const { id } = req.params;
+    const report = await MaintenanceReport.findByPk(id, {
+      include: [
+        { model: MaintenanceAnswer, as: "answers" }
+      ]
+    });
+    
+    if (!report) return res.status(httpStatus.NOT_FOUND).json({ message: "Reporte no encontrado" });
+    
+    res.status(httpStatus.OK).json({ data: report });
+  } catch (error) {
+    console.error(error);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+  }
+}
+
+async function getAllMaintenanceReports(req, res) {
+  try {
+    const { company } = req.params;
+    const reports = await MaintenanceReport.findAll({
+      include: [
+        { 
+          model: Proyect, 
+          as: "projectData", 
+          where: { company },
+          include: [
+            { model: require("../models/clients"), as: "customerData" },
+            { model: require("../models/elevatorType"), as: "elevatorTypeData" }
+          ]
+        },
+        { model: User, as: "technicianData" }
+      ],
+      order: [["date", "DESC"]]
+    });
+    
+    res.status(httpStatus.OK).json({ data: reports });
+  } catch (error) {
+    console.error(error);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message });
+  }
+}
+
 module.exports = {
-  saveMaintenanceReport
+  saveMaintenanceReport,
+  getMaintenanceReport,
+  getAllMaintenanceReports
 };

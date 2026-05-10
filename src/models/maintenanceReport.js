@@ -22,6 +22,9 @@ const MaintenanceReport = sequelize.define(
 
 MaintenanceReport.belongsTo(Proyect, { foreignKey: "project_id", as: "projectData" });
 MaintenanceReport.belongsTo(User, { foreignKey: "technician_id", as: "technicianData" });
+const MaintenanceAnswer = require("./maintenanceAnswer");
+MaintenanceReport.hasMany(MaintenanceAnswer, { foreignKey: "maintenance_report_id", as: "answers" });
+MaintenanceAnswer.belongsTo(MaintenanceReport, { foreignKey: "maintenance_report_id" });
 
 // We define the inverse association here to avoid circular dependency in Proyect.js
 Proyect.hasMany(MaintenanceReport, { foreignKey: "project_id", as: "maintenances" });
