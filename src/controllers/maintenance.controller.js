@@ -29,13 +29,23 @@ async function saveMaintenanceReport(req, res) {
     // 2. Create Answers
     if (answers && typeof answers === 'object') {
       const answerRecords = Object.entries(answers).map(([key, data]) => {
+        // Support both naming conventions: frontend sends answer_text/selected_options,
+        // but the original state structure used text/optionIds
+        const answerText = data.answer_text ?? data.text ?? null;
+        const selectedOptions = data.selected_options ?? data.optionIds ?? [];
+        // Photos may arrive as base64 strings directly or as { preview: base64 } objects
+        const rawPhotos = data.photos || [];
+        const savedPhotos = rawPhotos.map(p => {
+          const src = typeof p === 'string' ? p : p?.preview;
+          return base64ToFile(src, 'maintenance');
+        });
+
         return {
           maintenance_report_id: report.id,
           question_id: data.question_id || key,
-          answer_text: data.text || null,
-          selected_options: data.optionIds || [],
-          // Convert all photos from base64 (if they are) to files
-          photos: data.photos?.map(p => base64ToFile(p.preview, 'maintenance')) || [] 
+          answer_text: answerText,
+          selected_options: selectedOptions,
+          photos: savedPhotos
         };
       });
       await MaintenanceAnswer.bulkCreate(answerRecords);
