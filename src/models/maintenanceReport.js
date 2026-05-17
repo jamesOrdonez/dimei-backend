@@ -12,6 +12,7 @@ const MaintenanceReport = sequelize.define(
     technician_id: { type: DataTypes.INTEGER, allowNull: false },
     date: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
     customer_signature: { type: DataTypes.TEXT("long"), allowNull: false },
+    customer_name: { type: DataTypes.STRING(150), allowNull: true },
     technician_signature: { type: DataTypes.TEXT("long"), allowNull: false },
     status: { type: DataTypes.STRING(20), defaultValue: "Finalizado" },
   },
