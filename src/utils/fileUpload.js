@@ -21,6 +21,25 @@ const base64ToFile = (base64String, folder) => {
   return `/uploads/${folder}/${fileName}`;
 };
 
-module.exports = {
-  base64ToFile
+/**
+ * Deletes a file from disk given its stored relative path (e.g. /uploads/signatures/file.png).
+ * Silently ignores if the file does not exist.
+ */
+const deleteFile = (relativePath) => {
+  if (!relativePath) return;
+  try {
+    // relativePath starts with '/', so strip it for path.join
+    const filePath = path.join(relativePath.replace(/^\//, ''));
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  } catch (err) {
+    console.error('Error deleting file:', relativePath, err.message);
+  }
 };
+
+module.exports = {
+  base64ToFile,
+  deleteFile
+};
+
