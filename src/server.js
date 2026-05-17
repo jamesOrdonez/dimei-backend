@@ -7,6 +7,7 @@ const app = express();
 const PORT = process.env.PORT;
 
 const v1Routes = require("./routes");
+const { verifyToken } = require("./middleware/protected.route");
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -19,7 +20,7 @@ app.use(
   }),
 );
 
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+app.use("/api/v1/uploads", verifyToken, express.static(path.join(__dirname, "../uploads")));
 app.use("/api/v1/", v1Routes);
 
 app.get("/", (req, res) => {
