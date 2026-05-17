@@ -11,7 +11,10 @@ const claveSecreta = "super_secret";
  * mediante los permisos literales retornados por /getMyPermissions.
  */
 const verifyToken = async (req, res, next) => {
-    const token = req.header("Authorization")?.replace("Bearer ", "");
+    let token = req.header("Authorization") || req.query.token;
+    if (token && token.startsWith("Bearer ")) {
+        token = token.replace("Bearer ", "");
+    }
     if (!token) {
         return res.status(httpStatus.UNAUTHORIZED).json({
             status: httpStatus.UNAUTHORIZED,
