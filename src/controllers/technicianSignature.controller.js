@@ -1,7 +1,7 @@
 const httpStatus = require("http-status");
 const TechnicianSignature = require("../models/technicianSignature");
 
-const { base64ToFile } = require("../utils/fileUpload");
+const { base64ToFile, deleteFile } = require("../utils/fileUpload");
 
 async function getMySignatures(req, res) {
   try {
@@ -32,7 +32,13 @@ async function saveSignature(req, res) {
 async function deleteSignature(req, res) {
   try {
     const { id } = req.params;
-    await TechnicianSignature.destroy({ where: { id } });
+    const record = await TechnicianSignature.findByPk(id);
+    if (!record) return res.status(404).json({ message: "Firma no encontrada" });
+
+    // Delete file from disk before removing the DB record
+    deleteFile(record.signature);
+
+    await record.destroy();
     res.status(httpStatus.OK).json({ message: "Firma eliminada" });
   } catch (error) {
     console.error(error);
