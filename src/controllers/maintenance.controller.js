@@ -90,7 +90,8 @@ async function getAllMaintenanceReports(req, res) {
           where: { company },
           include: [
             { model: require("../models/clients"), as: "customerData" },
-            { model: require("../models/elevatorType"), as: "elevatorTypeData" }
+            { model: require("../models/elevatorType"), as: "elevatorTypeData" },
+            { model: require("../models/typeDriveSystem"), as: "driveSystemData" }
           ]
         },
         { model: User, as: "technicianData" }
