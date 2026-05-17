@@ -470,6 +470,31 @@ async function update(req, res) {
   }
 }
 
+async function deleteProject(req, res) {
+  try {
+    const { id } = req.params;
+    const deleted = await model.destroy({ where: { id } });
+
+    if (deleted) {
+      res.status(httpStatus.OK).json({
+        message: "Proyecto eliminado exitosamente",
+        Module,
+      });
+    } else {
+      res.status(httpStatus.NOT_FOUND).json({
+        message: "Proyecto no encontrado",
+        Module,
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: `Error interno en el servidor: ${error}`,
+      Module,
+    });
+  }
+}
+
 async function updateState(req, res) {
   try {
     const { id } = req.params;
@@ -584,4 +609,5 @@ module.exports = {
   updateState,
   uploadSignedAct,
   getSignedAct,
+  deleteProject,
 };
