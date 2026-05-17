@@ -10,6 +10,7 @@ router
   .get("/getInventoryComparison/:company", controller.getInventoryComparison)
   .patch("/updateProjectStatus/:id", controller.updateState)
   .post("/uploadSignedAct/:id", upload.single("signed_act"), controller.uploadSignedAct)
-  .get("/getSignedAct/:id", controller.getSignedAct);
+  .get("/getSignedAct/:id", controller.getSignedAct)
+  .delete("/deleteProject/:id", controller.deleteProject);
 
 module.exports = router;
