@@ -68,7 +68,7 @@ async function getTools(req, res) {
         where: { status: 'Prestado', company: companyId }
       }]
     });
-    
+
     const lentMap = {};
     activeLoans.forEach(item => {
       const remaining = item.quantity - (item.returned_quantity || 0);
@@ -127,7 +127,11 @@ async function getOneTool(req, res) {
 async function updateTool(req, res) {
   try {
     const id = req.params.id;
-    const updates = { ...req.body };
+    // eslint-disable-next-line no-unused-vars
+    const { img: _imgFromBody, ...bodyFields } = req.body;
+    // 'img' is only updated through req.file (multer). Exclude it from the
+    // body spread to avoid overwriting the stored filename with a stale string.
+    const updates = { ...bodyFields };
 
     if (req.file) {
       const currentTool = await Tool.findByPk(id);
