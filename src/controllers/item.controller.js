@@ -108,21 +108,30 @@ async function getOneItem(req, res) {
 async function updateItem(req, res) {
   try {
     const id = req.params.id;
-    const updates = { ...req.body };
+    const { img: imgFromBody, ...bodyFields } = req.body;
+    const updates = { ...bodyFields };
 
     if (req.file) {
-      // Get current item to delete old image
+      // Case 1: new image uploaded — replace the old one
       const currentItem = await Item.findByPk(id);
       if (currentItem && currentItem.img) {
         const oldPath = path.join(itemUploadsDir, currentItem.img);
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
-
       const ext = path.extname(req.file.originalname);
       const filename = `item-${Date.now()}${ext}`;
       fs.writeFileSync(path.join(itemUploadsDir, filename), req.file.buffer);
       updates.img = filename;
+    } else if (imgFromBody === '') {
+      // Case 2: user cleared the image → delete file and set null
+      const currentItem = await Item.findByPk(id);
+      if (currentItem && currentItem.img) {
+        const oldPath = path.join(itemUploadsDir, currentItem.img);
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+      updates.img = null;
     }
+    // Case 3: imgFromBody undefined → user didn't touch image, keep existing
 
     // Check if record exists first to be more accurate with errors
     const itemToUpdate = await Item.findByPk(id);

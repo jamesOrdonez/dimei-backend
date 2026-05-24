@@ -128,23 +128,30 @@ async function updateTool(req, res) {
   try {
     const id = req.params.id;
     // eslint-disable-next-line no-unused-vars
-    const { img: _imgFromBody, ...bodyFields } = req.body;
-    // 'img' is only updated through req.file (multer). Exclude it from the
-    // body spread to avoid overwriting the stored filename with a stale string.
+    const { img: imgFromBody, ...bodyFields } = req.body;
     const updates = { ...bodyFields };
 
     if (req.file) {
+      // Case 1: user uploaded a new image — replace the old one
       const currentTool = await Tool.findByPk(id);
       if (currentTool && currentTool.img) {
         const oldPath = path.join(toolUploadsDir, currentTool.img);
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
-
       const ext = path.extname(req.file.originalname);
       const filename = `tool-${Date.now()}${ext}`;
       fs.writeFileSync(path.join(toolUploadsDir, filename), req.file.buffer);
       updates.img = filename;
+    } else if (imgFromBody === '') {
+      // Case 2: user cleared the image (frontend sends img='') — delete file and set null
+      const currentTool = await Tool.findByPk(id);
+      if (currentTool && currentTool.img) {
+        const oldPath = path.join(toolUploadsDir, currentTool.img);
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+      updates.img = null;
     }
+    // Case 3: imgFromBody is undefined → user didn't touch the image, keep existing
 
     const [updated] = await Tool.update(updates, { where: { id } });
 
