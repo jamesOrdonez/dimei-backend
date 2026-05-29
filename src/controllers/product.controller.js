@@ -34,7 +34,7 @@ async function getOneProduct(req, res) {
       include: [
         {
           model: ItemProduct,
-          attributes: [['item', 'id'], 'quantity'],
+          attributes: [['item', 'id'], 'quantity', 'variable', 'value1', 'value2'],
           as: 'productItem',
           include: [{
             model: Item,
@@ -89,6 +89,9 @@ async function saveproduct(req, res) {
         product: newProduct.id,
         item: item.id,
         quantity: item.quantity,
+        variable: item.variable || 0,
+        value1: item.value1 || null,
+        value2: item.value2 || null,
         company: data.company
       }));
 
@@ -136,6 +139,9 @@ async function updateProduct(req, res) {
           product: id,
           item: item.id,
           quantity: item.quantity,
+          variable: item.variable || 0,
+          value1: item.value1 || null,
+          value2: item.value2 || null,
           company: data.company
         }));
 

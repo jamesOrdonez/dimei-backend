@@ -152,7 +152,7 @@ async function getOneProject(req, res) {
           include: [
             {
               model: Product,
-              attributes: ["id", "name"],
+              attributes: ["id", "name", "description"],
               as: "productData",
               include: [
                 {
@@ -264,6 +264,9 @@ async function getOneProject(req, res) {
               item_id: pi.itemData?.id,
               item_name: pi.itemData?.description,
               quantity: quantity,
+              variable: pi.variable || 0,
+              value1: pi.value1 || null,
+              value2: pi.value2 || null,
               price: price,
               total: quantity * price
             };
@@ -274,6 +277,7 @@ async function getOneProject(req, res) {
             id: pp.id,
             product_id: pp.productData?.id,
             product_name: pp.productData?.name,
+            product_description: pp.productData?.description,
             quantity: pp.quantity,
             remitted_quantity: remittedProductsTotal[pp.productData?.id] || 0,
             remitted_details: remittedProductsDetail[pp.productData?.id] || [],
