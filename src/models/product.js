@@ -11,10 +11,7 @@ const Product = sequelize.define(
         user: { type: DataTypes.INTEGER, allowNull: true },
         company: { type: DataTypes.INTEGER, allowNull: false },
         fk_group_product: { type: DataTypes.INTEGER, allowNull: true },
-        variable: { type: DataTypes.INTEGER, allowNull: true },
-        value1: { type: DataTypes.INTEGER, allowNull: true },
         mathOperation: { type: DataTypes.STRING, allowNull: true },
-        value2: { type: DataTypes.INTEGER, allowNull: true }
     },
     {
         tableName: "product",

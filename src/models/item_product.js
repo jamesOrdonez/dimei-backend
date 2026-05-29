@@ -18,7 +18,20 @@ const ItemProduct = sequelize.define("ItemProduct", {
     },
     quantity: {
         type: DataTypes.FLOAT,
-        allowNull: false,
+        allowNull: true,
+    },
+    variable: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: 0,
+    },
+    value1: {
+        type: DataTypes.FLOAT,
+        allowNull: true,
+    },
+    value2: {
+        type: DataTypes.FLOAT,
+        allowNull: true,
     },
     company: {
         type: DataTypes.INTEGER,
