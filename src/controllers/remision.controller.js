@@ -66,21 +66,16 @@ async function save(req, res) {
             });
             if (!productData) continue;
 
-            let calculationUnits = 1;
-            if (productData.variable) {
-                const v1 = Number(productData.value1 || 0);
-                const v2 = Number(productData.value2 || 0);
-                const op = productData.mathOperation;
-                let base = travel * v1;
-                if (op === '*') calculationUnits = base * v2;
-                else if (op === '/') calculationUnits = v2 !== 0 ? base / v2 : base;
-                else if (op === '+') calculationUnits = base + v2;
-                else if (op === '-') calculationUnits = base - v2;
-                else calculationUnits = base;
-            }
-
             for (const pi of (productData.productItem || [])) {
-                const qty = calculationUnits * Number(pi.quantity || 0) * Number(prod.quantity);
+                let itemQtyNeeded = 0;
+                if (pi.variable) {
+                    const v1 = Number(pi.value1 || 0);
+                    const v2 = Number(pi.value2 || 0);
+                    itemQtyNeeded = (travel * v1) + v2;
+                } else {
+                    itemQtyNeeded = Number(pi.quantity || 0);
+                }
+                const qty = itemQtyNeeded * Number(prod.quantity);
                 requiredStock[pi.item] = (requiredStock[pi.item] || 0) + qty;
             }
         }
@@ -127,19 +122,6 @@ async function save(req, res) {
                 transaction: t
             });
 
-            let units = 1;
-            if (productData.variable) {
-                const v1 = Number(productData.value1 || 0);
-                const v2 = Number(productData.value2 || 0);
-                const op = productData.mathOperation;
-                let base = travel * v1;
-                if (op === '*') units = base * v2;
-                else if (op === '/') units = v2 !== 0 ? base / v2 : base;
-                else if (op === '+') units = base + v2;
-                else if (op === '-') units = base - v2;
-                else units = base;
-            }
-
             const remProduct = await RemisionProduct.create({
                 fk_remision: remision.id,
                 fk_product: prod.id,
@@ -148,7 +130,15 @@ async function save(req, res) {
             }, { transaction: t });
 
             for (const pi of (productData.productItem || [])) {
-                const discount = units * Number(pi.quantity || 0) * Number(prod.quantity);
+                let itemQtyNeeded = 0;
+                if (pi.variable) {
+                    const v1 = Number(pi.value1 || 0);
+                    const v2 = Number(pi.value2 || 0);
+                    itemQtyNeeded = (travel * v1) + v2;
+                } else {
+                    itemQtyNeeded = Number(pi.quantity || 0);
+                }
+                const discount = itemQtyNeeded * Number(prod.quantity);
                 const item = await Item.findByPk(pi.item, { transaction: t });
                 await item.update({ amount: item.amount - discount }, { transaction: t });
 
@@ -231,19 +221,6 @@ async function complete(req, res) {
 
                 // Todos los registros de este producto comparten la misma estructura
                 const productData = remProducts[0].product;
-                let calculationUnits = 1;
-
-                if (productData.variable) {
-                    const v1 = Number(productData.value1 || 0);
-                    const v2 = Number(productData.value2 || 0);
-                    const op = productData.mathOperation;
-                    let base = travel * v1;
-                    if (op === '*') calculationUnits = base * v2;
-                    else if (op === '/') calculationUnits = v2 !== 0 ? base / v2 : base;
-                    else if (op === '+') calculationUnits = base + v2;
-                    else if (op === '-') calculationUnits = base - v2;
-                    else calculationUnits = base;
-                }
 
                 // Cálculo total de stock necesario para TODOS los registros pendientes de este producto
                 const totalQuantity = remProducts.reduce((sum, rp) => sum + Number(rp.quantity), 0);
@@ -253,7 +230,15 @@ async function complete(req, res) {
                 const localMissing = [];
 
                 for (const pi of (productData.productItem || [])) {
-                    const needed = calculationUnits * Number(pi.quantity || 0) * totalQuantity;
+                    let itemQtyNeeded = 0;
+                    if (pi.variable) {
+                        const v1 = Number(pi.value1 || 0);
+                        const v2 = Number(pi.value2 || 0);
+                        itemQtyNeeded = (travel * v1) + v2;
+                    } else {
+                        itemQtyNeeded = Number(pi.quantity || 0);
+                    }
+                    const needed = itemQtyNeeded * totalQuantity;
                     
                     if (!(pi.item in stockTracker)) {
                         const item = await Item.findByPk(pi.item, { transaction: t, lock: true });

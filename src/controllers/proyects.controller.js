@@ -264,6 +264,9 @@ async function getOneProject(req, res) {
               item_id: pi.itemData?.id,
               item_name: pi.itemData?.description,
               quantity: quantity,
+              variable: pi.variable || 0,
+              value1: pi.value1 || null,
+              value2: pi.value2 || null,
               price: price,
               total: quantity * price
             };
