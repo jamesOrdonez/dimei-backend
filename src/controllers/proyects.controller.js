@@ -383,6 +383,19 @@ async function getInventoryComparison(req, res) {
     const separatedPerItemTotal = {};
     const separatedPerItemProject = {};
     const separatedPerItemActive = {};
+    const allocationsPerItem = {};
+
+    const addAllocation = (itemId, projId, qty) => {
+      if (qty <= 0) return;
+      if (!activeProjectIds.includes(projId)) return;
+      if (!allocationsPerItem[itemId]) allocationsPerItem[itemId] = [];
+      const existing = allocationsPerItem[itemId].find(a => a.projectId === projId);
+      if (existing) {
+        existing.quantity += qty;
+      } else {
+        allocationsPerItem[itemId].push({ projectId: projId, quantity: qty });
+      }
+    };
 
     // 2a. Add direct items
     separatedItems.forEach(si => {
@@ -402,6 +415,8 @@ async function getInventoryComparison(req, res) {
         if (!separatedPerItemProject[itemId]) separatedPerItemProject[itemId] = 0;
         separatedPerItemProject[itemId] += qty;
       }
+
+      addAllocation(itemId, projId, qty);
     });
 
     // 3a. Add items via products
@@ -428,6 +443,8 @@ async function getInventoryComparison(req, res) {
           if (!separatedPerItemProject[itemId]) separatedPerItemProject[itemId] = 0;
           separatedPerItemProject[itemId] += totalItemsSeparated;
         }
+
+        addAllocation(itemId, projId, totalItemsSeparated);
       });
     });
 
@@ -449,6 +466,7 @@ async function getInventoryComparison(req, res) {
         price: it.price || 0,
         low_stock: it.low_stock || 0,
         proveedor: it.Proveedor?.nombre || '-',
+        allocations: allocationsPerItem[it.id] || [],
       };
     });
 
