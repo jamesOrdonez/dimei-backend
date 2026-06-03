@@ -5,7 +5,7 @@ const model = require("../models/proyect");
 const ElevatorType = require("../models/elevatorType");
 const TypeDriveSystem = require("../models/typeDriveSystem");
 const Module = "proyect";
-const { col } = require("sequelize");
+const { col, Op } = require("sequelize");
 const Client = require("../models/clients");
 const product_proyect = require("../models/product_proyect")
 const item_proyect = require("../models/item_proyect");
@@ -330,6 +330,14 @@ async function getInventoryComparison(req, res) {
       nest: true,
     });
 
+    // 1.5 Get active projects (state != 'Creado')
+    const activeProjects = await model.findAll({
+      where: { company: companyId, state: { [Op.ne]: 'Creado' } },
+      attributes: ['id'],
+      raw: true
+    });
+    const activeProjectIds = activeProjects.map(p => p.id);
+
     // 2. Get separated items directly tied to projects
     const separatedItems = await item_proyect.findAll({
       include: [
@@ -374,6 +382,7 @@ async function getInventoryComparison(req, res) {
     // Calculate separated quantity per item (Total and Specific Project)
     const separatedPerItemTotal = {};
     const separatedPerItemProject = {};
+    const separatedPerItemActive = {};
 
     // 2a. Add direct items
     separatedItems.forEach(si => {
@@ -383,6 +392,11 @@ async function getInventoryComparison(req, res) {
 
       if (!separatedPerItemTotal[itemId]) separatedPerItemTotal[itemId] = 0;
       separatedPerItemTotal[itemId] += qty;
+
+      if (activeProjectIds.includes(projId)) {
+        if (!separatedPerItemActive[itemId]) separatedPerItemActive[itemId] = 0;
+        separatedPerItemActive[itemId] += qty;
+      }
 
       if (projectId && String(projId) === String(projectId)) {
         if (!separatedPerItemProject[itemId]) separatedPerItemProject[itemId] = 0;
@@ -405,6 +419,11 @@ async function getInventoryComparison(req, res) {
         if (!separatedPerItemTotal[itemId]) separatedPerItemTotal[itemId] = 0;
         separatedPerItemTotal[itemId] += totalItemsSeparated;
 
+        if (activeProjectIds.includes(projId)) {
+          if (!separatedPerItemActive[itemId]) separatedPerItemActive[itemId] = 0;
+          separatedPerItemActive[itemId] += totalItemsSeparated;
+        }
+
         if (projectId && String(projId) === String(projectId)) {
           if (!separatedPerItemProject[itemId]) separatedPerItemProject[itemId] = 0;
           separatedPerItemProject[itemId] += totalItemsSeparated;
@@ -415,6 +434,7 @@ async function getInventoryComparison(req, res) {
     // Map the result
     const comparison = items.map(it => {
       const totalSeparated = separatedPerItemTotal[it.id] || 0;
+      const activeSeparated = separatedPerItemActive[it.id] || 0;
       const projectSeparated = projectId ? (separatedPerItemProject[it.id] || 0) : totalSeparated;
       const amount = it.amount || 0;
 
@@ -424,6 +444,7 @@ async function getInventoryComparison(req, res) {
         total_inventory: amount,
         separated_inventory: projectSeparated,
         available_inventory: amount - totalSeparated, // Disponibilidad real libre
+        available_inventory_active: amount - activeSeparated,
         category: it.group_item,
         price: it.price || 0,
         low_stock: it.low_stock || 0,
