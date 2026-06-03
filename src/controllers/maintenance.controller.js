@@ -13,7 +13,8 @@ async function saveMaintenanceReport(req, res) {
       customer_signature, 
       technician_signature, 
       customer_name,
-      answers 
+      answers,
+      pdf_base64
     } = req.body;
 
     // 1. Create Report
@@ -23,6 +24,7 @@ async function saveMaintenanceReport(req, res) {
       customer_signature: base64ToFile(customer_signature, 'signatures'),
       technician_signature: base64ToFile(technician_signature, 'signatures'),
       customer_name: customer_name || null,
+      pdf_path: base64ToFile(pdf_base64, 'maintenances'),
       date: new Date()
     });
 

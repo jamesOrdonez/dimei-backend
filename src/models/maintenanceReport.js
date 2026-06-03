@@ -15,6 +15,7 @@ const MaintenanceReport = sequelize.define(
     customer_name: { type: DataTypes.STRING(150), allowNull: true },
     technician_signature: { type: DataTypes.TEXT("long"), allowNull: false },
     status: { type: DataTypes.STRING(20), defaultValue: "Finalizado" },
+    pdf_path: { type: DataTypes.STRING(255), allowNull: true },
   },
   { tableName: "maintenance_report", timestamps: true }
 );
