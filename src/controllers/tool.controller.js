@@ -2,6 +2,7 @@ const httpStatus = require("http-status");
 const Tool = require("../models/Tool");
 const ToolGroup = require("../models/ToolGroup");
 const ToolUnitOfMeasure = require("../models/ToolUnitOfMeasure");
+const Rol = require("../models/rol");
 const Module = "tool";
 const fs = require("fs");
 const path = require("path");
@@ -130,6 +131,15 @@ async function updateTool(req, res) {
     // eslint-disable-next-line no-unused-vars
     const { img: imgFromBody, ...bodyFields } = req.body;
     const updates = { ...bodyFields };
+
+    // Limit quantity (amount) editing to administrators only
+    const { rolId } = req.tokenData;
+    const rol = await Rol.findOne({ where: { id: rolId } });
+    const isAdmin = rol ? rol.name === "Administrador" : false;
+
+    if (!isAdmin) {
+      delete updates.amount;
+    }
 
     if (req.file) {
       // Case 1: user uploaded a new image — replace the old one
