@@ -8,6 +8,7 @@ const OptionTemplate = sequelize.define(
     group_id: { type: DataTypes.INTEGER, allowNull: false },
     text: { type: DataTypes.STRING(200), allowNull: false },
     requires_photo: { type: DataTypes.TINYINT, allowNull: false, defaultValue: 0 },
+    requires_justification: { type: DataTypes.TINYINT, allowNull: false, defaultValue: 0 },
     sort_order: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 0 },
   },
   { tableName: "option_template", timestamps: false }

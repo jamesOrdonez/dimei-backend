@@ -5,7 +5,7 @@ const model = require("../models/proyect");
 const ElevatorType = require("../models/elevatorType");
 const TypeDriveSystem = require("../models/typeDriveSystem");
 const Module = "proyect";
-const { col } = require("sequelize");
+const { col, Op } = require("sequelize");
 const Client = require("../models/clients");
 const product_proyect = require("../models/product_proyect")
 const item_proyect = require("../models/item_proyect");
@@ -330,6 +330,18 @@ async function getInventoryComparison(req, res) {
       nest: true,
     });
 
+    // 1.5 Get active projects (state != 'Creado')
+    const activeProjects = await model.findAll({
+      where: { company: companyId, state: { [Op.ne]: 'Creado' } },
+      attributes: ['id', 'travel'],
+      raw: true
+    });
+    const activeProjectIds = activeProjects.map(p => p.id);
+    const activeProjectTravelMap = {};
+    activeProjects.forEach(p => {
+      activeProjectTravelMap[p.id] = parseFloat(p.travel) || 0;
+    });
+
     // 2. Get separated items directly tied to projects
     const separatedItems = await item_proyect.findAll({
       include: [
@@ -374,6 +386,20 @@ async function getInventoryComparison(req, res) {
     // Calculate separated quantity per item (Total and Specific Project)
     const separatedPerItemTotal = {};
     const separatedPerItemProject = {};
+    const separatedPerItemActive = {};
+    const allocationsPerItem = {};
+
+    const addAllocation = (itemId, projId, qty) => {
+      if (qty <= 0) return;
+      if (!activeProjectIds.includes(projId)) return;
+      if (!allocationsPerItem[itemId]) allocationsPerItem[itemId] = [];
+      const existing = allocationsPerItem[itemId].find(a => a.projectId === projId);
+      if (existing) {
+        existing.quantity += qty;
+      } else {
+        allocationsPerItem[itemId].push({ projectId: projId, quantity: qty });
+      }
+    };
 
     // 2a. Add direct items
     separatedItems.forEach(si => {
@@ -381,13 +407,20 @@ async function getInventoryComparison(req, res) {
       const qty = si.quantity || 0;
       const projId = si.proyect;
 
+      if (!activeProjectIds.includes(projId)) return;
+
       if (!separatedPerItemTotal[itemId]) separatedPerItemTotal[itemId] = 0;
       separatedPerItemTotal[itemId] += qty;
+
+      if (!separatedPerItemActive[itemId]) separatedPerItemActive[itemId] = 0;
+      separatedPerItemActive[itemId] += qty;
 
       if (projectId && String(projId) === String(projectId)) {
         if (!separatedPerItemProject[itemId]) separatedPerItemProject[itemId] = 0;
         separatedPerItemProject[itemId] += qty;
       }
+
+      addAllocation(itemId, projId, qty);
     });
 
     // 3a. Add items via products
@@ -395,26 +428,43 @@ async function getInventoryComparison(req, res) {
       const prodId = sp.product;
       const projQty = sp.quantity || 0;
       const projId = sp.proyect;
+
+      if (!activeProjectIds.includes(projId)) return;
+
       const itemsInProd = productItemMap[prodId] || [];
 
       itemsInProd.forEach(pi => {
-        const itemQtyPerProduct = pi.quantity || 0;
+        let itemQtyPerProduct = pi.quantity || 0;
+
+        if (pi.variable === 1 || pi.variable === '1') {
+          const travelVal = activeProjectTravelMap[projId] || 0;
+          const val1 = Number(pi.value1) || 0;
+          const val2 = Number(pi.value2) || 0;
+          itemQtyPerProduct = parseFloat(((travelVal * val1) + val2).toFixed(2));
+        }
+
         const totalItemsSeparated = projQty * itemQtyPerProduct;
         const itemId = pi.item;
 
         if (!separatedPerItemTotal[itemId]) separatedPerItemTotal[itemId] = 0;
         separatedPerItemTotal[itemId] += totalItemsSeparated;
 
+        if (!separatedPerItemActive[itemId]) separatedPerItemActive[itemId] = 0;
+        separatedPerItemActive[itemId] += totalItemsSeparated;
+
         if (projectId && String(projId) === String(projectId)) {
           if (!separatedPerItemProject[itemId]) separatedPerItemProject[itemId] = 0;
           separatedPerItemProject[itemId] += totalItemsSeparated;
         }
+
+        addAllocation(itemId, projId, totalItemsSeparated);
       });
     });
 
     // Map the result
     const comparison = items.map(it => {
       const totalSeparated = separatedPerItemTotal[it.id] || 0;
+      const activeSeparated = separatedPerItemActive[it.id] || 0;
       const projectSeparated = projectId ? (separatedPerItemProject[it.id] || 0) : totalSeparated;
       const amount = it.amount || 0;
 
@@ -424,10 +474,12 @@ async function getInventoryComparison(req, res) {
         total_inventory: amount,
         separated_inventory: projectSeparated,
         available_inventory: amount - totalSeparated, // Disponibilidad real libre
+        available_inventory_active: amount - activeSeparated,
         category: it.group_item,
         price: it.price || 0,
         low_stock: it.low_stock || 0,
         proveedor: it.Proveedor?.nombre || '-',
+        allocations: allocationsPerItem[it.id] || [],
       };
     });
 

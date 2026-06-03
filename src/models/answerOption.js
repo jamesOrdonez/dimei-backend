@@ -8,6 +8,7 @@ const AnswerOption = sequelize.define(
     question_id: { type: DataTypes.INTEGER, allowNull: false },
     text: { type: DataTypes.STRING(200), allowNull: false },
     requires_photo: { type: DataTypes.TINYINT, allowNull: false, defaultValue: 0 },
+    requires_justification: { type: DataTypes.TINYINT, allowNull: false, defaultValue: 0 },
   },
   { tableName: "answer_option", timestamps: false }
 );

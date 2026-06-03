@@ -110,7 +110,12 @@ async function saveQuestion(req, res) {
     const question = await Question.create({ group_id, text, type, min_photos, max_photos, order: order || 0 });
 
     if (options && options.length > 0) {
-      const opts = options.map((o) => ({ question_id: question.id, text: o.text, requires_photo: toBool(o.requires_photo) }));
+      const opts = options.map((o) => ({ 
+        question_id: question.id, 
+        text: o.text, 
+        requires_photo: toBool(o.requires_photo),
+        requires_justification: toBool(o.requires_justification)
+      }));
       await AnswerOption.bulkCreate(opts);
     }
 
@@ -132,7 +137,12 @@ async function updateQuestion(req, res) {
     // Sync options: delete all and re-insert
     await AnswerOption.destroy({ where: { question_id: id } });
     if (options && options.length > 0) {
-      const opts = options.map((o) => ({ question_id: id, text: o.text, requires_photo: toBool(o.requires_photo) }));
+      const opts = options.map((o) => ({ 
+        question_id: id, 
+        text: o.text, 
+        requires_photo: toBool(o.requires_photo),
+        requires_justification: toBool(o.requires_justification)
+      }));
       await AnswerOption.bulkCreate(opts);
     }
 

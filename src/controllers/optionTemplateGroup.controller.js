@@ -30,7 +30,13 @@ async function saveOptionTemplateGroup(req, res) {
     const group = await OptionTemplateGroup.create({ name, company });
     if (options.length > 0) {
       await OptionTemplate.bulkCreate(
-        options.map((o, i) => ({ group_id: group.id, text: o.text, requires_photo: toBool(o.requires_photo), sort_order: i }))
+        options.map((o, i) => ({ 
+          group_id: group.id, 
+          text: o.text, 
+          requires_photo: toBool(o.requires_photo), 
+          requires_justification: toBool(o.requires_justification),
+          sort_order: i 
+        }))
       );
     }
     const full = await OptionTemplateGroup.findByPk(group.id, { include: [{ model: OptionTemplate, as: "options" }] });
@@ -50,7 +56,13 @@ async function updateOptionTemplateGroup(req, res) {
     await OptionTemplate.destroy({ where: { group_id: id } });
     if (options.length > 0) {
       await OptionTemplate.bulkCreate(
-        options.map((o, i) => ({ group_id: id, text: o.text, requires_photo: toBool(o.requires_photo), sort_order: i }))
+        options.map((o, i) => ({ 
+          group_id: id, 
+          text: o.text, 
+          requires_photo: toBool(o.requires_photo), 
+          requires_justification: toBool(o.requires_justification),
+          sort_order: i 
+        }))
       );
     }
     const full = await OptionTemplateGroup.findByPk(id, { include: [{ model: OptionTemplate, as: "options" }] });
