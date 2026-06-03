@@ -333,10 +333,14 @@ async function getInventoryComparison(req, res) {
     // 1.5 Get active projects (state != 'Creado')
     const activeProjects = await model.findAll({
       where: { company: companyId, state: { [Op.ne]: 'Creado' } },
-      attributes: ['id'],
+      attributes: ['id', 'travel'],
       raw: true
     });
     const activeProjectIds = activeProjects.map(p => p.id);
+    const activeProjectTravelMap = {};
+    activeProjects.forEach(p => {
+      activeProjectTravelMap[p.id] = parseFloat(p.travel) || 0;
+    });
 
     // 2. Get separated items directly tied to projects
     const separatedItems = await item_proyect.findAll({
@@ -403,13 +407,13 @@ async function getInventoryComparison(req, res) {
       const qty = si.quantity || 0;
       const projId = si.proyect;
 
+      if (!activeProjectIds.includes(projId)) return;
+
       if (!separatedPerItemTotal[itemId]) separatedPerItemTotal[itemId] = 0;
       separatedPerItemTotal[itemId] += qty;
 
-      if (activeProjectIds.includes(projId)) {
-        if (!separatedPerItemActive[itemId]) separatedPerItemActive[itemId] = 0;
-        separatedPerItemActive[itemId] += qty;
-      }
+      if (!separatedPerItemActive[itemId]) separatedPerItemActive[itemId] = 0;
+      separatedPerItemActive[itemId] += qty;
 
       if (projectId && String(projId) === String(projectId)) {
         if (!separatedPerItemProject[itemId]) separatedPerItemProject[itemId] = 0;
@@ -424,20 +428,29 @@ async function getInventoryComparison(req, res) {
       const prodId = sp.product;
       const projQty = sp.quantity || 0;
       const projId = sp.proyect;
+
+      if (!activeProjectIds.includes(projId)) return;
+
       const itemsInProd = productItemMap[prodId] || [];
 
       itemsInProd.forEach(pi => {
-        const itemQtyPerProduct = pi.quantity || 0;
+        let itemQtyPerProduct = pi.quantity || 0;
+
+        if (pi.variable === 1 || pi.variable === '1') {
+          const travelVal = activeProjectTravelMap[projId] || 0;
+          const val1 = Number(pi.value1) || 0;
+          const val2 = Number(pi.value2) || 0;
+          itemQtyPerProduct = parseFloat(((travelVal * val1) + val2).toFixed(2));
+        }
+
         const totalItemsSeparated = projQty * itemQtyPerProduct;
         const itemId = pi.item;
 
         if (!separatedPerItemTotal[itemId]) separatedPerItemTotal[itemId] = 0;
         separatedPerItemTotal[itemId] += totalItemsSeparated;
 
-        if (activeProjectIds.includes(projId)) {
-          if (!separatedPerItemActive[itemId]) separatedPerItemActive[itemId] = 0;
-          separatedPerItemActive[itemId] += totalItemsSeparated;
-        }
+        if (!separatedPerItemActive[itemId]) separatedPerItemActive[itemId] = 0;
+        separatedPerItemActive[itemId] += totalItemsSeparated;
 
         if (projectId && String(projId) === String(projectId)) {
           if (!separatedPerItemProject[itemId]) separatedPerItemProject[itemId] = 0;
