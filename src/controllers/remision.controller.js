@@ -386,7 +386,7 @@ async function getAll(req, res) {
                         {
                             model: Item,
                             as: 'item',
-                            attributes: ['id', 'description']
+                            attributes: ['id', 'description', 'position1', 'position2', 'position3']
                         }
                     ]
                 }
