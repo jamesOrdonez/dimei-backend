@@ -101,6 +101,7 @@ async function getProject(req, res) {
         typeDriveSystemName: driveSystemData?.typeDriveSystem || null,
         customerName: customerData?.nombre || null,
         questionGroupId: elevatorTypeData?.question_group_id || null,
+        displayLabel: `Proyecto #${data.id} - Cliente: ${customerData?.nombre || 'S/N'} - Sist: ${driveSystemData?.typeDriveSystem || 'S/N'}`,
         lastMaintenance: lastMaintenance ? {
           id: lastMaintenance.id,
           date: lastMaintenance.date,
@@ -161,7 +162,7 @@ async function getOneProject(req, res) {
                   include: [
                     {
                       model: Item,
-                      attributes: ["id", "description", "price"],
+                      attributes: ["id", "description", "price", "position1", "position2", "position3"],
                       as: "itemData",
                     },
                   ],
@@ -177,7 +178,7 @@ async function getOneProject(req, res) {
           include: [
             {
               model: Item,
-              attributes: ["id", "description", "price"],
+              attributes: ["id", "description", "price", "position1", "position2", "position3"],
               as: "itemData",
             },
           ],
@@ -268,7 +269,8 @@ async function getOneProject(req, res) {
               value1: pi.value1 || null,
               value2: pi.value2 || null,
               price: price,
-              total: quantity * price
+              total: quantity * price,
+              location: [pi.itemData?.position1, pi.itemData?.position2, pi.itemData?.position3].filter(Boolean).join(' - ') || 'S/N'
             };
           });
           const productTotal = itemsData.reduce((acc, curr) => acc + curr.total, 0);
@@ -296,7 +298,8 @@ async function getOneProject(req, res) {
             remitted_quantity: remittedItemsTotal[ip.itemData?.id] || 0,
             remitted_details: remittedItemsDetail[ip.itemData?.id] || [],
             price: price,
-            total: quantity * price
+            total: quantity * price,
+            location: [ip.itemData?.position1, ip.itemData?.position2, ip.itemData?.position3].filter(Boolean).join(' - ') || 'S/N'
           };
         }),
       };
@@ -480,6 +483,9 @@ async function getInventoryComparison(req, res) {
         low_stock: it.low_stock || 0,
         proveedor: it.Proveedor?.nombre || '-',
         allocations: allocationsPerItem[it.id] || [],
+        position1: it.position1,
+        position2: it.position2,
+        position3: it.position3,
       };
     });
 
