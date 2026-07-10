@@ -323,7 +323,6 @@ async function getInventoryComparison(req, res) {
     const companyId = req.params.company;
     const projectId = req.query.projectId;
 
-    // 1. Get all items for the company
     const items = await Item.findAll({
       where: { company: companyId },
       include: [
@@ -333,7 +332,6 @@ async function getInventoryComparison(req, res) {
       nest: true,
     });
 
-    // 1.5 Get active projects (state != 'Creado')
     const activeProjects = await model.findAll({
       where: { company: companyId, state: { [Op.ne]: 'Creado' } },
       attributes: ['id', 'travel'],
@@ -345,7 +343,6 @@ async function getInventoryComparison(req, res) {
       activeProjectTravelMap[p.id] = parseFloat(p.travel) || 0;
     });
 
-    // 2. Get separated items directly tied to projects
     const separatedItems = await item_proyect.findAll({
       include: [
         {
@@ -358,7 +355,6 @@ async function getInventoryComparison(req, res) {
       raw: true,
     });
 
-    // 3. Get separated products tied to projects, and their items
     const separatedProducts = await product_proyect.findAll({
       include: [
         {
@@ -371,13 +367,11 @@ async function getInventoryComparison(req, res) {
       raw: true,
     });
 
-    // To compute items separated by products, we need product items mapping
     const productItemsData = await ItemProduct.findAll({
       where: { company: companyId },
       raw: true,
     });
 
-    // Group product items by product ID
     const productItemMap = {};
     productItemsData.forEach(pi => {
       if (!productItemMap[pi.product]) {
@@ -386,7 +380,33 @@ async function getInventoryComparison(req, res) {
       productItemMap[pi.product].push(pi);
     });
 
-    // Calculate separated quantity per item (Total and Specific Project)
+    const remissions = await Remision.findAll({
+      where: { company: companyId },
+      include: [
+        { model: RemisionItem, as: "remisionItems" }
+      ]
+    });
+
+    // Split remissions into direct (standalone items) vs via-product (product components)
+    // to avoid double-counting when an item appears in both item_proyect and product_proyect
+    const remittedDirectByProject = {};
+    const remittedViaProductByProject = {};
+    remissions.forEach(rem => {
+      const projId = rem.fk_proyect;
+      if (!remittedDirectByProject[projId]) remittedDirectByProject[projId] = {};
+      if (!remittedViaProductByProject[projId]) remittedViaProductByProject[projId] = {};
+      (rem.remisionItems || []).forEach(ri => {
+        const itemId = ri.fk_item;
+        if (ri.fk_remision_product) {
+          // This item was remitted as part of a product
+          remittedViaProductByProject[projId][itemId] = (remittedViaProductByProject[projId][itemId] || 0) + ri.quantity;
+        } else {
+          // This item was remitted directly (standalone)
+          remittedDirectByProject[projId][itemId] = (remittedDirectByProject[projId][itemId] || 0) + ri.quantity;
+        }
+      });
+    });
+
     const separatedPerItemTotal = {};
     const separatedPerItemProject = {};
     const separatedPerItemActive = {};
@@ -404,67 +424,55 @@ async function getInventoryComparison(req, res) {
       }
     };
 
-    // 2a. Add direct items
+    // Process direct items — use only direct remissions for discount
     separatedItems.forEach(si => {
       const itemId = si.item;
       const qty = si.quantity || 0;
       const projId = si.proyect;
-
       if (!activeProjectIds.includes(projId)) return;
 
-      if (!separatedPerItemTotal[itemId]) separatedPerItemTotal[itemId] = 0;
-      separatedPerItemTotal[itemId] += qty;
+      const remitted = remittedDirectByProject[projId]?.[itemId] || 0;
+      const netQty = Math.max(0, qty - remitted);
 
-      if (!separatedPerItemActive[itemId]) separatedPerItemActive[itemId] = 0;
-      separatedPerItemActive[itemId] += qty;
+      separatedPerItemTotal[itemId] = (separatedPerItemTotal[itemId] || 0) + netQty;
+      separatedPerItemActive[itemId] = (separatedPerItemActive[itemId] || 0) + netQty;
 
       if (projectId && String(projId) === String(projectId)) {
-        if (!separatedPerItemProject[itemId]) separatedPerItemProject[itemId] = 0;
-        separatedPerItemProject[itemId] += qty;
+        separatedPerItemProject[itemId] = (separatedPerItemProject[itemId] || 0) + netQty;
       }
-
-      addAllocation(itemId, projId, qty);
+      addAllocation(itemId, projId, netQty);
     });
 
-    // 3a. Add items via products
+    // Process product components — use only via-product remissions for discount
     separatedProducts.forEach(sp => {
       const prodId = sp.product;
       const projQty = sp.quantity || 0;
       const projId = sp.proyect;
-
       if (!activeProjectIds.includes(projId)) return;
 
       const itemsInProd = productItemMap[prodId] || [];
-
       itemsInProd.forEach(pi => {
         let itemQtyPerProduct = pi.quantity || 0;
-
         if (pi.variable === 1 || pi.variable === '1') {
           const travelVal = activeProjectTravelMap[projId] || 0;
-          const val1 = Number(pi.value1) || 0;
-          const val2 = Number(pi.value2) || 0;
-          itemQtyPerProduct = parseFloat(((travelVal * val1) + val2).toFixed(2));
+          itemQtyPerProduct = parseFloat(((travelVal * (Number(pi.value1) || 0)) + (Number(pi.value2) || 0)).toFixed(2));
         }
 
         const totalItemsSeparated = projQty * itemQtyPerProduct;
         const itemId = pi.item;
+        const remitted = remittedViaProductByProject[projId]?.[itemId] || 0;
+        const netQty = Math.max(0, totalItemsSeparated - remitted);
 
-        if (!separatedPerItemTotal[itemId]) separatedPerItemTotal[itemId] = 0;
-        separatedPerItemTotal[itemId] += totalItemsSeparated;
-
-        if (!separatedPerItemActive[itemId]) separatedPerItemActive[itemId] = 0;
-        separatedPerItemActive[itemId] += totalItemsSeparated;
+        separatedPerItemTotal[itemId] = (separatedPerItemTotal[itemId] || 0) + netQty;
+        separatedPerItemActive[itemId] = (separatedPerItemActive[itemId] || 0) + netQty;
 
         if (projectId && String(projId) === String(projectId)) {
-          if (!separatedPerItemProject[itemId]) separatedPerItemProject[itemId] = 0;
-          separatedPerItemProject[itemId] += totalItemsSeparated;
+          separatedPerItemProject[itemId] = (separatedPerItemProject[itemId] || 0) + netQty;
         }
-
-        addAllocation(itemId, projId, totalItemsSeparated);
+        addAllocation(itemId, projId, netQty);
       });
     });
 
-    // Map the result
     const comparison = items.map(it => {
       const totalSeparated = separatedPerItemTotal[it.id] || 0;
       const activeSeparated = separatedPerItemActive[it.id] || 0;
@@ -476,7 +484,7 @@ async function getInventoryComparison(req, res) {
         item_name: it.description,
         total_inventory: amount,
         separated_inventory: projectSeparated,
-        available_inventory: amount - totalSeparated, // Disponibilidad real libre
+        available_inventory: amount - totalSeparated,
         available_inventory_active: amount - activeSeparated,
         category: it.group_item,
         price: it.price || 0,
@@ -488,6 +496,7 @@ async function getInventoryComparison(req, res) {
         position3: it.position3,
       };
     });
+
 
     res.status(httpStatus.OK).json({
       data: comparison,
