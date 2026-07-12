@@ -12,6 +12,7 @@ const Product = sequelize.define(
         company: { type: DataTypes.INTEGER, allowNull: false },
         fk_group_product: { type: DataTypes.INTEGER, allowNull: true },
         mathOperation: { type: DataTypes.STRING, allowNull: true },
+        por_metros_cuadrados: { type: DataTypes.TINYINT(1), allowNull: false, defaultValue: 0 },
     },
     {
         tableName: "product",

@@ -215,6 +215,19 @@ async function entranceItems(req, res) {
 
     await item.update({ amount: newAmount });
 
+    const InventoryLog = require("../models/InventoryLog");
+    if (req.body.fkUser) {
+      await InventoryLog.create({
+        item_id: id,
+        action_type: "ENTRADA",
+        action_source: "MANUAL",
+        destination_detail: "Entrada manual",
+        quantity: addAmount,
+        user_id: req.body.fkUser,
+        date: new Date()
+      });
+    }
+
     res.status(httpStatus.OK).json({
       message: "Cantidad actualizada",
       module: Module,
@@ -243,6 +256,19 @@ async function exitItems(req, res) {
     const newAmount = currentAmount - subAmount;
 
     await item.update({ amount: newAmount });
+
+    const InventoryLog = require("../models/InventoryLog");
+    if (req.body.fkUser) {
+      await InventoryLog.create({
+        item_id: id,
+        action_type: "SALIDA",
+        action_source: "MANUAL",
+        destination_detail: "Salida manual",
+        quantity: subAmount,
+        user_id: req.body.fkUser,
+        date: new Date()
+      });
+    }
 
     res.status(httpStatus.OK).json({
       message: "Cantidad actualizada",
@@ -277,6 +303,29 @@ async function getItemImage(req, res) {
   }
 }
 
+// Obtener historial de item
+async function getInventoryLogByItem(req, res) {
+  try {
+    const id = req.params.id;
+    const InventoryLog = require("../models/InventoryLog");
+    const User = require("../models/user");
+    const logs = await InventoryLog.findAll({
+      where: { item_id: id },
+      order: [['date', 'DESC']],
+      include: [
+        { model: User, as: "ChangedBy", attributes: ["id", "name"] }
+      ]
+    });
+    res.status(httpStatus.OK).json({ data: logs, module: Module });
+  } catch (error) {
+    console.error(error);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: "Error interno",
+      module: Module,
+    });
+  }
+}
+
 module.exports = {
   saveItems,
   getItems,
@@ -286,4 +335,5 @@ module.exports = {
   entranceItems,
   exitItems,
   getItemImage,
+  getInventoryLogByItem,
 };

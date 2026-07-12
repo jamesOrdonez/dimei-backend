@@ -193,10 +193,33 @@ async function deleteProduct(req, res) {
   }
 }
 
+async function getInventoryLogByProduct(req, res) {
+  try {
+    const id = req.params.id;
+    const InventoryLog = require("../models/InventoryLog");
+    const User = require("../models/user");
+    const logs = await InventoryLog.findAll({
+      where: { product_id: id },
+      order: [['date', 'DESC']],
+      include: [
+        { model: User, as: "ChangedBy", attributes: ["id", "name"] }
+      ]
+    });
+    res.status(httpStatus.OK).json({ data: logs, module: ModuleName });
+  } catch (error) {
+    console.error(error);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      message: "Error interno",
+      module: ModuleName,
+    });
+  }
+}
+
 module.exports = {
   getproduct,
   getOneProduct,
   saveproduct,
   updateProduct,
   deleteProduct,
+  getInventoryLogByProduct,
 };
