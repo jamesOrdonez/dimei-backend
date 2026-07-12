@@ -9,6 +9,7 @@ const Product = require("../models/product");
 const ItemProduct = require("../models/item_product");
 const RemisionProduct = require("../models/remision_product");
 const User = require("../models/user");
+const InventoryLog = require("../models/InventoryLog");
 
 const Module = "remision";
 
@@ -129,6 +130,18 @@ async function save(req, res) {
                 status: 'Completo'
             }, { transaction: t });
 
+            if (fkUser) {
+                await InventoryLog.create({
+                    product_id: prod.id,
+                    action_type: "SALIDA",
+                    action_source: "REMISION",
+                    destination_detail: fk_proyect ? `Salida de remisión de proyecto ${fk_proyect}` : "Salida de remisión manual",
+                    quantity: prod.quantity,
+                    user_id: fkUser,
+                    date: new Date()
+                }, { transaction: t });
+            }
+
             for (const pi of (productData.productItem || [])) {
                 let itemQtyNeeded = 0;
                 if (pi.variable) {
@@ -141,6 +154,18 @@ async function save(req, res) {
                 const discount = itemQtyNeeded * Number(prod.quantity);
                 const item = await Item.findByPk(pi.item, { transaction: t });
                 await item.update({ amount: item.amount - discount }, { transaction: t });
+
+                if (fkUser) {
+                    await InventoryLog.create({
+                        item_id: pi.item,
+                        action_type: "SALIDA",
+                        action_source: "REMISION",
+                        destination_detail: fk_proyect ? `Salida de remisión de proyecto ${fk_proyect}` : "Salida de remisión manual",
+                        quantity: discount,
+                        user_id: fkUser,
+                        date: new Date()
+                    }, { transaction: t });
+                }
 
                 await RemisionItem.create({
                     fk_item: pi.item,
@@ -157,6 +182,18 @@ async function save(req, res) {
         for (const it of normalizedItems) {
             const item = await Item.findByPk(it.id, { transaction: t });
             await item.update({ amount: item.amount - Number(it.quantity) }, { transaction: t });
+
+            if (fkUser) {
+                await InventoryLog.create({
+                    item_id: it.id,
+                    action_type: "SALIDA",
+                    action_source: "REMISION",
+                    destination_detail: fk_proyect ? `Salida de remisión de proyecto ${fk_proyect}` : "Salida de remisión manual",
+                    quantity: Number(it.quantity),
+                    user_id: fkUser,
+                    date: new Date()
+                }, { transaction: t });
+            }
 
             await RemisionItem.create({
                 fk_item: it.id,
@@ -188,7 +225,7 @@ async function save(req, res) {
 async function complete(req, res) {
     const t = await sequelize.transaction();
     try {
-        const { productFks, itemFks, fk_proyect } = req.body;
+        const { productFks, itemFks, fk_proyect, fkUser } = req.body;
 
         // 1. Obtener datos del proyecto para variables de cálculo
         const project = await Proyect.findByPk(fk_proyect, { transaction: t });
@@ -257,6 +294,17 @@ async function complete(req, res) {
                     for (const itD of itemsToDeduct) {
                         stockTracker[itD.id] -= itD.quantity;
                         await Item.setAmount(itD.id, stockTracker[itD.id], t);
+                        if (fkUser) {
+                            await InventoryLog.create({
+                                item_id: itD.id,
+                                action_type: "SALIDA",
+                                action_source: "REMISION",
+                                destination_detail: `Salida de remisión de proyecto ${fk_proyect}`,
+                                quantity: itD.quantity,
+                                user_id: fkUser,
+                                date: new Date()
+                            }, { transaction: t });
+                        }
                     }
                     // Actualizar todos los rem_products y sus rem_items
                     for (const rp of remProducts) {
@@ -297,6 +345,17 @@ async function complete(req, res) {
                 if (!isItemPending) {
                     stockTracker[itemId] -= totalNeeded;
                     await Item.setAmount(itemId, stockTracker[itemId], t);
+                    if (fkUser) {
+                        await InventoryLog.create({
+                            item_id: itemId,
+                            action_type: "SALIDA",
+                            action_source: "REMISION",
+                            destination_detail: `Salida de remisión de proyecto ${fk_proyect}`,
+                            quantity: totalNeeded,
+                            user_id: fkUser,
+                            date: new Date()
+                        }, { transaction: t });
+                    }
                     for (const ri of remItems) {
                         await ri.update({ status: 'Completo' }, { transaction: t });
                     }

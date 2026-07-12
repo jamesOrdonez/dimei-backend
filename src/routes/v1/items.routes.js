@@ -18,6 +18,7 @@ router
   .get("/public/item/:id", ItemController.getOneItem)
   .get("/getItem/:id", ItemController.getItems)
   .get("/getItem/image/:id", ItemController.getItemImage)
+  .get("/inventoryLog/item/:id", protectedRoute(options), ItemController.getInventoryLogByItem)
   .get("/oneItem/:id", protectedRoute(options), ItemController.getOneItem)
   .put(
     "/updateItem/:id",

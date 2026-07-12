@@ -212,6 +212,14 @@ async function changeStatus(req, res) {
                 status: itemStatus,
             }, { transaction: t });
 
+            if (item.status === 'Perdido') {
+                const toolDb = await Tool.findByPk(loanItem.tool_id, { transaction: t });
+                if (toolDb) {
+                    const newAmount = Math.max(0, (toolDb.amount || 0) - Number(item.returnQty));
+                    await toolDb.update({ amount: newAmount }, { transaction: t });
+                }
+            }
+
             // Registrar en historial: SIEMPRE el status real de la devolución
             await ToolLoanStatusHistory.create({
                 tool_loan_id: id,

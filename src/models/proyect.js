@@ -65,6 +65,15 @@ const Proyect = sequelize.define(
       allowNull: false,
       defaultValue: 'proyecto',
     },
+    necesita_encerramiento: {
+      type: DataTypes.TINYINT(1),
+      allowNull: false,
+      defaultValue: 0,
+    },
+    metros_cuadrados: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+    },
   },
   {
     freezeTableName: true,

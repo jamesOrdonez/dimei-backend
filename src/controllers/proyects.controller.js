@@ -153,7 +153,7 @@ async function getOneProject(req, res) {
           include: [
             {
               model: Product,
-              attributes: ["id", "name", "description"],
+              attributes: ["id", "name", "description", "por_metros_cuadrados"],
               as: "productData",
               include: [
                 {
@@ -256,6 +256,8 @@ async function getOneProject(req, res) {
         questionGroupId: elevatorTypeData?.question_group_id || null,
         typeDriveSystemName: driveSystemData?.typeDriveSystem || null,
         customerName: customerData?.nombre || null,
+        necesita_encerramiento: data.necesita_encerramiento || 0,
+        metros_cuadrados: data.metros_cuadrados || null,
         products: (productProyect || []).map((pp) => {
           const productItems = pp.productData?.productItem || [];
           const itemsData = productItems.map(pi => {
@@ -281,6 +283,7 @@ async function getOneProject(req, res) {
             product_name: pp.productData?.name,
             product_description: pp.productData?.description,
             quantity: pp.quantity,
+            por_metros_cuadrados: pp.productData?.por_metros_cuadrados || 0,
             remitted_quantity: remittedProductsTotal[pp.productData?.id] || 0,
             remitted_details: remittedProductsDetail[pp.productData?.id] || [],
             total_price: productTotal, // Mide el precio unitario del producto basado en sus componentes
@@ -334,13 +337,18 @@ async function getInventoryComparison(req, res) {
 
     const activeProjects = await model.findAll({
       where: { company: companyId, state: { [Op.ne]: 'Creado' } },
-      attributes: ['id', 'travel'],
+      attributes: ['id', 'travel', 'necesita_encerramiento', 'metros_cuadrados'],
       raw: true
     });
     const activeProjectIds = activeProjects.map(p => p.id);
     const activeProjectTravelMap = {};
+    const activeProjectEnclosureMap = {};
     activeProjects.forEach(p => {
       activeProjectTravelMap[p.id] = parseFloat(p.travel) || 0;
+      activeProjectEnclosureMap[p.id] = {
+        necesita_encerramiento: p.necesita_encerramiento === 1 || p.necesita_encerramiento === true,
+        metros_cuadrados: parseFloat(p.metros_cuadrados) || 0
+      };
     });
 
     const separatedItems = await item_proyect.findAll({
@@ -361,7 +369,7 @@ async function getInventoryComparison(req, res) {
           model: Product,
           as: "productData",
           where: { company: companyId },
-          attributes: ["id"],
+          attributes: ["id", "por_metros_cuadrados"],
         }
       ],
       raw: true,
@@ -446,9 +454,17 @@ async function getInventoryComparison(req, res) {
     // Process product components — use only via-product remissions for discount
     separatedProducts.forEach(sp => {
       const prodId = sp.product;
-      const projQty = sp.quantity || 0;
       const projId = sp.proyect;
       if (!activeProjectIds.includes(projId)) return;
+
+      const enclosureInfo = activeProjectEnclosureMap[projId];
+      const necesitaEncerramiento = enclosureInfo?.necesita_encerramiento;
+      const metrosCuadrados = enclosureInfo?.metros_cuadrados || 0;
+      const esPorMetros = sp['productData.por_metros_cuadrados'] === 1 || sp['productData.por_metros_cuadrados'] === true;
+
+      const projQty = (necesitaEncerramiento && esPorMetros && metrosCuadrados > 0)
+        ? (Number(sp.quantity) || 0) * metrosCuadrados
+        : (Number(sp.quantity) || 0);
 
       const itemsInProd = productItemMap[prodId] || [];
       itemsInProd.forEach(pi => {
