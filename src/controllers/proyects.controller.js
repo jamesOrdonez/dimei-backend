@@ -325,30 +325,43 @@ async function getInventoryComparison(req, res) {
   try {
     const companyId = req.params.company;
     const projectId = req.query.projectId;
+    const searchText = req.query.searchText;
+    const categoryId = req.query.categoryId;
+    const providerId = req.query.providerId; // nombre del proveedor (client.nombre)
+
+    // Build dynamic where for items
+    const itemWhere = { company: companyId };
+    if (categoryId) itemWhere.group_item = categoryId;
+    if (searchText) itemWhere.description = { [Op.like]: `%${searchText}%` };
 
     const items = await Item.findAll({
-      where: { company: companyId },
+      where: itemWhere,
       include: [
-        { model: Client, attributes: ["nombre"], as: "Proveedor" }
+        { model: Client, attributes: ["nombre"], as: "Proveedor",
+          ...(providerId ? { where: { nombre: { [Op.like]: `%${providerId}%` } }, required: true } : {})
+        }
       ],
       raw: true,
       nest: true,
     });
 
+
     const activeProjects = await model.findAll({
       where: { company: companyId, state: { [Op.ne]: 'Creado' } },
-      attributes: ['id', 'travel', 'necesita_encerramiento', 'metros_cuadrados'],
+      attributes: ['id', 'travel', 'necesita_encerramiento', 'metros_cuadrados', 'state'],
       raw: true
     });
     const activeProjectIds = activeProjects.map(p => p.id);
     const activeProjectTravelMap = {};
     const activeProjectEnclosureMap = {};
+    const activeProjectStateMap = {};
     activeProjects.forEach(p => {
       activeProjectTravelMap[p.id] = parseFloat(p.travel) || 0;
       activeProjectEnclosureMap[p.id] = {
         necesita_encerramiento: p.necesita_encerramiento === 1 || p.necesita_encerramiento === true,
         metros_cuadrados: parseFloat(p.metros_cuadrados) || 0
       };
+      activeProjectStateMap[p.id] = p.state;
     });
 
     const separatedItems = await item_proyect.findAll({
@@ -428,7 +441,11 @@ async function getInventoryComparison(req, res) {
       if (existing) {
         existing.quantity += qty;
       } else {
-        allocationsPerItem[itemId].push({ projectId: projId, quantity: qty });
+        allocationsPerItem[itemId].push({
+          projectId: projId,
+          quantity: qty,
+          projectState: activeProjectStateMap[projId] || null,
+        });
       }
     };
 
