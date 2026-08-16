@@ -74,6 +74,10 @@ const Proyect = sequelize.define(
       type: DataTypes.FLOAT,
       allowNull: true,
     },
+    observaciones: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
   },
   {
     freezeTableName: true,
