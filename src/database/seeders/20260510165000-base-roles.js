@@ -9,6 +9,7 @@ module.exports = {
     const baseRoles = [
       { name: 'Administrador', editable: 0 },
       { name: 'Técnicos', editable: 0 },
+      { name: 'Jefe de Almacen', editable: 0 },
       { name: 'Almacenista', editable: 0 },
       { name: 'Diseñador', editable: 0 }
     ];
