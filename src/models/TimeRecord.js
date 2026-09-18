@@ -61,12 +61,24 @@ const TimeRecord = sequelize.define("TimeRecord", {
         allowNull: true,
     },
 
+    // 1 si el usuario omitió el almuerzo
+    lunch_omitted: {
+        type: DataTypes.TINYINT,
+        defaultValue: 0,
+    },
+
+    // Justificación ingresada cuando se omite el almuerzo
+    lunch_justification: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+    },
+
 }, {
     tableName: "time_record",
     timestamps: false,   // La BD maneja created_at con DEFAULT CURRENT_TIMESTAMP
 });
 
-// Asegurar que la columna overtime_justification exista en MySQL
+// Asegurar que las columnas existan en MySQL
 async function ensureColumns() {
     try {
         const queryInterface = sequelize.getQueryInterface();
@@ -77,6 +89,20 @@ async function ensureColumns() {
                 allowNull: true,
             });
             console.log("Columna overtime_justification agregada a time_record");
+        }
+        if (!tableDesc.lunch_omitted) {
+            await queryInterface.addColumn("time_record", "lunch_omitted", {
+                type: DataTypes.TINYINT,
+                defaultValue: 0,
+            });
+            console.log("Columna lunch_omitted agregada a time_record");
+        }
+        if (!tableDesc.lunch_justification) {
+            await queryInterface.addColumn("time_record", "lunch_justification", {
+                type: DataTypes.TEXT,
+                allowNull: true,
+            });
+            console.log("Columna lunch_justification agregada a time_record");
         }
     } catch (e) {
         console.warn("Verificación de columnas en time_record:", e.message);
