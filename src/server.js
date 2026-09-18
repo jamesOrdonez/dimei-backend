@@ -20,6 +20,8 @@ app.use(
   }),
 );
 
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+app.use("/api/v1/uploads/attendance", express.static(path.join(__dirname, "../uploads/attendance")));
 app.use("/api/v1/uploads", verifyToken, express.static(path.join(__dirname, "../uploads")));
 app.use("/api/v1/", v1Routes);
 

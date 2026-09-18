@@ -8,6 +8,10 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST,
     port: process.env.DB_PORT || 3306,
     dialect: "mysql",
+    timezone: "-05:00", // Zona horaria de Colombia (UTC-5) para que guarde la hora local exacta
+    dialectOptions: {
+      timezone: "-05:00",
+    },
     logging: false,
     pool: {
       max: 10,

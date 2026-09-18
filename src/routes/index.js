@@ -30,6 +30,7 @@ const question = require('./v1/question.routes');
 const optionTemplateGroup = require('./v1/optionTemplateGroup.routes');
 const technicianSignature = require('./v1/technicianSignature.routes');
 const maintenance = require('./v1/maintenance.routes');
+const attendance = require('./v1/attendance.routes');
 
 routes.use(User);
 routes.use(Login);
@@ -60,5 +61,6 @@ routes.use(question);
 routes.use(optionTemplateGroup);
 routes.use(technicianSignature);
 routes.use(maintenance);
+routes.use(attendance);
 
 module.exports = routes;
