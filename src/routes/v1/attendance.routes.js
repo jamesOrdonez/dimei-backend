@@ -15,6 +15,7 @@ router
 
     // Reportes y festivos (admin)
     .get("/overtimeReport", verifyToken, controller.getOvertimeReport)
+    .get("/locationReport/excel", verifyToken, controller.exportLocationReportExcel)
     .get("/locationReport", verifyToken, controller.getLocationReport)
     .post("/markHoliday", verifyToken, controller.markHoliday);
 
