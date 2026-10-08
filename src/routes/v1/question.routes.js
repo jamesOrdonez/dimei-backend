@@ -7,6 +7,7 @@ const options = { Module };
 router
   .get("/getQuestionGroups/:company", protectedRoute(options), ctrl.getQuestionGroups)
   .get("/getOneQuestionGroup/:id", protectedRoute(options), ctrl.getOneQuestionGroup)
+  .get("/getProjectQuestionGroups/:projectId", protectedRoute(options), ctrl.getProjectQuestionGroups)
   .post("/saveQuestionGroup", protectedRoute(options), ctrl.saveQuestionGroup)
   .put("/updateQuestionGroup/:id", protectedRoute(options), ctrl.updateQuestionGroup)
   .delete("/deleteQuestionGroup/:id", protectedRoute(options), ctrl.deleteQuestionGroup)

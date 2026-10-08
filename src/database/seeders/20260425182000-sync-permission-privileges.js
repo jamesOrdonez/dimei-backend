@@ -22,6 +22,13 @@
  */
 module.exports = {
   async up(queryInterface, Sequelize) {
+    // Si la tabla permission ya fue normalizada (la columna permiss fue eliminada en migraciones posteriores), omitir
+    const tableDesc = await queryInterface.describeTable('permission');
+    if (!tableDesc.permiss) {
+      console.log('[seeder] Tabla permission ya normalizada (sin columna permiss). Omitiendo seeder.');
+      return;
+    }
+
     // 1. Obtener catálogo completo
     const catalog = await queryInterface.sequelize.query(
       'SELECT id, name FROM permission_catalog',

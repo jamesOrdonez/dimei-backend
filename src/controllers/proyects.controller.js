@@ -17,18 +17,56 @@ const RemisionItem = require("../models/remision_item");
 const Remision = require("../models/remision");
 const MaintenanceReport = require("../models/maintenanceReport");
 const User = require("../models/user");
+const ProjectQuestionGroup = require("../models/projectQuestionGroup");
+const QuestionGroup = require("../models/questionGroup");
+
+/**
+ * Reemplaza los grupos de preguntas asignados a un equipo.
+ * Solo actúa si se recibe un arreglo (los proyectos normales no envían el campo).
+ */
+async function syncQuestionGroups(projectId, groupIds) {
+  if (!Array.isArray(groupIds)) return;
+  const ids = [...new Set(groupIds.map(Number).filter((n) => Number.isInteger(n) && n > 0))];
+  await ProjectQuestionGroup.destroy({ where: { proyect_id: projectId } });
+  if (ids.length) {
+    await ProjectQuestionGroup.bulkCreate(
+      ids.map((gid, index) => ({ proyect_id: projectId, question_group_id: gid, sort_order: index }))
+    );
+  }
+}
 
 //* id del item/producto, nombre, cantidad, grupo
 
 async function save(req, res) {
   try {
-    const data = req.body;
+    const { question_group_ids, ...data } = req.body;
+
+    // Ignorar state si viene numérico (1/0)
+    if (data.state === 1 || data.state === 0 || data.state === '1' || data.state === '0') {
+      delete data.state;
+    }
+
     const saved = await model.create({
       ...data,
       tipo: data.tipo || 'proyecto'
     });
 
     if (saved) {
+      if (Array.isArray(question_group_ids) && question_group_ids.length > 0) {
+        await syncQuestionGroups(saved.id, question_group_ids);
+      } else if (saved.elevatorType) {
+        // Asignación automática por defecto según el Sistema Motriz
+        const defaultGroups = await QuestionGroup.findAll({
+          where: { elevator_type_id: saved.elevatorType },
+          order: [["sort_order", "ASC"], ["id", "ASC"]],
+          attributes: ["id"],
+          raw: true,
+        });
+        if (defaultGroups.length > 0) {
+          await syncQuestionGroups(saved.id, defaultGroups.map((g) => g.id));
+        }
+      }
+
       res.status(httpStatus.OK).json({
         message: "Registro creado",
         Module,
@@ -58,7 +96,7 @@ async function getProject(req, res) {
       include: [
         {
           model: ElevatorType,
-          attributes: ["id", "elevatorType", "question_group_id"],
+          attributes: ["id", "elevatorType"],
           as: "elevatorTypeData",
         },
         {
@@ -100,7 +138,6 @@ async function getProject(req, res) {
         elevatorTypeName: elevatorTypeData?.elevatorType || null,
         typeDriveSystemName: driveSystemData?.typeDriveSystem || null,
         customerName: customerData?.nombre || null,
-        questionGroupId: elevatorTypeData?.question_group_id || null,
         displayLabel: `Proyecto #${data.id} - Cliente: ${customerData?.nombre || 'S/N'} - Sist: ${driveSystemData?.typeDriveSystem || 'S/N'}`,
         lastMaintenance: lastMaintenance ? {
           id: lastMaintenance.id,
@@ -133,7 +170,7 @@ async function getOneProject(req, res) {
       include: [
         {
           model: ElevatorType,
-          attributes: ["id", "elevatorType", "question_group_id"],
+          attributes: ["id", "elevatorType"],
           as: "elevatorTypeData",
         },
         {
@@ -236,6 +273,35 @@ async function getOneProject(req, res) {
       });
     });
 
+    const groupLinks = await ProjectQuestionGroup.findAll({
+      where: { proyect_id: id },
+      order: [["sort_order", "ASC"], ["id", "ASC"]],
+      raw: true,
+    });
+    let questionGroupIds = groupLinks.map((l) => l.question_group_id);
+
+    // Si aún no tiene grupos guardados específicamente en la tabla pivote, pre-cargar los correspondientes
+    // al Sistema Motriz (elevatorType) de dicho equipo
+    if (questionGroupIds.length === 0 && projects[0]?.elevatorType) {
+      let defaultGroups = await QuestionGroup.findAll({
+        where: { elevator_type_id: projects[0].elevatorType },
+        order: [["sort_order", "ASC"], ["id", "ASC"]],
+        attributes: ["id"],
+        raw: true,
+      });
+      if (defaultGroups.length === 0 && projects[0]?.company) {
+        defaultGroups = await QuestionGroup.findAll({
+          where: { company: projects[0].company },
+          order: [["sort_order", "ASC"], ["id", "ASC"]],
+          attributes: ["id"],
+          raw: true,
+        });
+      }
+      if (defaultGroups.length > 0) {
+        questionGroupIds = defaultGroups.map((g) => g.id);
+      }
+    }
+
     const formattedProjects = projects.map((project) => {
       const data = project.toJSON();
       const {
@@ -253,7 +319,7 @@ async function getOneProject(req, res) {
         typeDriveSystem: data.typeDriveSystem,
         customerId: data.customerId,
         elevatorTypeName: elevatorTypeData?.elevatorType || null,
-        questionGroupId: elevatorTypeData?.question_group_id || null,
+        question_group_ids: questionGroupIds,
         typeDriveSystemName: driveSystemData?.typeDriveSystem || null,
         customerName: customerData?.nombre || null,
         necesita_encerramiento: data.necesita_encerramiento || 0,
@@ -548,13 +614,33 @@ async function getInventoryComparison(req, res) {
 async function update(req, res) {
   try {
     const { id } = req.params;
-    const data = req.body;
+    const { question_group_ids, ...data } = req.body;
 
-    const updated = await model.update(data, {
+    const allowedFields = [
+      'user', 'company', 'elevatorType', 'typeDriveSystem', 'customerId',
+      'stopNumber', 'travel', 'capacity', 'state', 'signed_act', 'nombre',
+      'tipo', 'necesita_encerramiento', 'metros_cuadrados', 'observaciones'
+    ];
+    const updateData = {};
+    for (const key of allowedFields) {
+      if (data[key] !== undefined) {
+        // Ignorar state si viene como número (1/0) inyectado por FormDialog para no violar el ENUM
+        if (key === 'state' && (data[key] === 1 || data[key] === 0 || data[key] === '1' || data[key] === '0')) {
+          continue;
+        }
+        updateData[key] = data[key];
+      }
+    }
+
+    const updated = await model.update(updateData, {
       where: { id }
     });
 
-    if (updated[0] > 0) {
+    // Si solo cambiaron los grupos de preguntas, update() devuelve 0 filas: verificar existencia
+    const exists = updated[0] > 0 || (await model.count({ where: { id } })) > 0;
+
+    if (exists) {
+      await syncQuestionGroups(id, question_group_ids);
       res.status(httpStatus.OK).json({
         message: "Registro actualizado",
         Module,
@@ -566,7 +652,7 @@ async function update(req, res) {
       });
     }
   } catch (error) {
-    console.error(error);
+    console.error("Error al actualizar proyecto/equipo:", error);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
       message: `Error interno en el servidor: ${error}`,
       Module,
@@ -580,6 +666,7 @@ async function deleteProject(req, res) {
     const deleted = await model.destroy({ where: { id } });
 
     if (deleted) {
+      await ProjectQuestionGroup.destroy({ where: { proyect_id: id } });
       res.status(httpStatus.OK).json({
         message: "Proyecto eliminado exitosamente",
         Module,

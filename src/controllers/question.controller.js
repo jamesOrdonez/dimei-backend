@@ -2,6 +2,9 @@ const httpStatus = require("http-status");
 const QuestionGroup = require("../models/questionGroup");
 const Question = require("../models/question");
 const AnswerOption = require("../models/answerOption");
+const ElevatorType = require("../models/elevatorType");
+const ProjectQuestionGroup = require("../models/projectQuestionGroup");
+const Proyect = require("../models/proyect");
 const Module = "question";
 
 // ── Relations (eager loading) ─────────────────────────────────────────────────
@@ -9,6 +12,17 @@ QuestionGroup.hasMany(Question, { foreignKey: "group_id", as: "questions" });
 Question.belongsTo(QuestionGroup, { foreignKey: "group_id", as: "group" });
 Question.hasMany(AnswerOption, { foreignKey: "question_id", as: "options" });
 AnswerOption.belongsTo(Question, { foreignKey: "question_id", as: "question" });
+QuestionGroup.belongsTo(ElevatorType, { foreignKey: "elevator_type_id", as: "systemType", constraints: false });
+
+const questionsInclude = {
+  model: Question,
+  as: "questions",
+  order: [["order", "ASC"]],
+  separate: true,
+  include: [{ model: AnswerOption, as: "options", separate: true, order: [["id", "ASC"]] }],
+};
+const systemTypeInclude = { model: ElevatorType, as: "systemType", attributes: ["id", "elevatorType"] };
+const toNullableInt = (v) => (v === undefined || v === null || v === '' ? null : Number(v));
 
 // Safely convert any truthy/falsy representation to 1 or 0
 const toBool = (v) => (v === true || v === 1 || v === '1' || v === 'true') ? 1 : 0;
@@ -19,18 +33,13 @@ const toBool = (v) => (v === true || v === 1 || v === '1' || v === 'true') ? 1 :
 async function getQuestionGroups(req, res) {
   try {
     const { company } = req.params;
+    const where = { company };
+    // Filtro opcional por tipo de sistema: ?elevator_type_id=ID
+    if (req.query.elevator_type_id) where.elevator_type_id = req.query.elevator_type_id;
     const records = await QuestionGroup.findAll({
-      where: { company },
+      where,
       order: [["sort_order", "ASC"], ["id", "ASC"]],
-      include: [
-        {
-          model: Question,
-          as: "questions",
-          order: [["order", "ASC"]],
-          separate: true,
-          include: [{ model: AnswerOption, as: "options", separate: true, order: [["id", "ASC"]] }],
-        },
-      ],
+      include: [questionsInclude, systemTypeInclude],
     });
     res.status(httpStatus.OK).json({ data: records, module: Module });
   } catch (error) {
@@ -43,15 +52,7 @@ async function getOneQuestionGroup(req, res) {
   try {
     const { id } = req.params;
     const record = await QuestionGroup.findByPk(id, {
-      include: [
-        {
-          model: Question,
-          as: "questions",
-          order: [["order", "ASC"]],
-          separate: true,
-          include: [{ model: AnswerOption, as: "options", separate: true, order: [["id", "ASC"]] }],
-        },
-      ],
+      include: [questionsInclude, systemTypeInclude],
     });
     if (!record) return res.status(httpStatus.NOT_FOUND).json({ message: "Grupo no encontrado", module: Module });
     res.status(httpStatus.OK).json({ data: record, module: Module });
@@ -61,10 +62,86 @@ async function getOneQuestionGroup(req, res) {
   }
 }
 
+/**
+ * Devuelve todos los grupos de preguntas asignados a un equipo, junto con la
+ * lista plana de preguntas (en orden de grupo y de pregunta) para el formulario
+ * de mantenimiento y el PDF.
+ */
+async function getProjectQuestionGroups(req, res) {
+  try {
+    const { projectId } = req.params;
+
+    let links = await ProjectQuestionGroup.findAll({
+      where: { proyect_id: projectId },
+      order: [["sort_order", "ASC"], ["id", "ASC"]],
+      raw: true,
+    });
+
+    // Fallback: Si el equipo aún no tiene grupos guardados en proyect_question_group,
+    // buscamos automáticamente los grupos asignados al Sistema Motriz (elevatorType) de dicho equipo.
+    if (!links || links.length === 0) {
+      const project = await Proyect.findByPk(projectId);
+      if (project && project.elevatorType) {
+        let defaultGroups = await QuestionGroup.findAll({
+          where: { elevator_type_id: project.elevatorType },
+          order: [["sort_order", "ASC"], ["id", "ASC"]],
+          attributes: ["id"],
+          raw: true,
+        });
+
+        // Si no hay grupos con ese elevator_type_id específico, buscar grupos generales de la empresa
+        if (defaultGroups.length === 0 && project.company) {
+          defaultGroups = await QuestionGroup.findAll({
+            where: { company: project.company },
+            order: [["sort_order", "ASC"], ["id", "ASC"]],
+            attributes: ["id"],
+            raw: true,
+          });
+        }
+
+        if (defaultGroups.length > 0) {
+          const toCreate = defaultGroups.map((g, idx) => ({
+            proyect_id: Number(projectId),
+            question_group_id: g.id,
+            sort_order: idx,
+          }));
+          await ProjectQuestionGroup.bulkCreate(toCreate, { ignoreDuplicates: true }).catch(() => {});
+          links = await ProjectQuestionGroup.findAll({
+            where: { proyect_id: projectId },
+            order: [["sort_order", "ASC"], ["id", "ASC"]],
+            raw: true,
+          });
+        }
+      }
+    }
+
+    const groupIds = (links || []).map((l) => l.question_group_id);
+
+    const groups = groupIds.length
+      ? await QuestionGroup.findAll({
+          where: { id: groupIds },
+          include: [questionsInclude, systemTypeInclude],
+        })
+      : [];
+
+    const groupMap = new Map(groups.map((g) => [g.id, g.toJSON()]));
+    const groupsJson = groupIds.map((id) => groupMap.get(id)).filter(Boolean);
+    const questions = groupsJson.flatMap((g) =>
+      (g.questions || []).map((q) => ({ ...q, group_name: g.name }))
+    );
+
+    res.status(httpStatus.OK).json({ data: { groups: groupsJson, questions }, module: Module });
+  } catch (error) {
+    console.error("Error en getProjectQuestionGroups:", error);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message, module: Module });
+  }
+}
+
 async function saveQuestionGroup(req, res) {
   try {
-    const { name, company } = req.body;
-    const record = await QuestionGroup.create({ name, company });
+    const { name, company, elevator_type_id } = req.body;
+    const created = await QuestionGroup.create({ name, company, elevator_type_id: toNullableInt(elevator_type_id) });
+    const record = await QuestionGroup.findByPk(created.id, { include: [systemTypeInclude] });
     res.status(httpStatus.CREATED).json({ data: record, module: Module, message: "Grupo creado" });
   } catch (error) {
     console.error(error);
@@ -75,9 +152,11 @@ async function saveQuestionGroup(req, res) {
 async function updateQuestionGroup(req, res) {
   try {
     const { id } = req.params;
-    const { name } = req.body;
-    await QuestionGroup.update({ name }, { where: { id } });
-    const record = await QuestionGroup.findByPk(id);
+    const { name, elevator_type_id } = req.body;
+    const changes = { name };
+    if (elevator_type_id !== undefined) changes.elevator_type_id = toNullableInt(elevator_type_id);
+    await QuestionGroup.update(changes, { where: { id } });
+    const record = await QuestionGroup.findByPk(id, { include: [systemTypeInclude] });
     res.status(httpStatus.OK).json({ data: record, module: Module, message: "Grupo actualizado" });
   } catch (error) {
     console.error(error);
@@ -94,6 +173,7 @@ async function deleteQuestionGroup(req, res) {
       await AnswerOption.destroy({ where: { question_id: q.id } });
     }
     await Question.destroy({ where: { group_id: id } });
+    await ProjectQuestionGroup.destroy({ where: { question_group_id: id } });
     await QuestionGroup.destroy({ where: { id } });
     res.status(httpStatus.OK).json({ module: Module, message: "Grupo eliminado" });
   } catch (error) {
@@ -191,6 +271,7 @@ async function reorderQuestions(req, res) {
 module.exports = {
   getQuestionGroups,
   getOneQuestionGroup,
+  getProjectQuestionGroups,
   saveQuestionGroup,
   updateQuestionGroup,
   deleteQuestionGroup,
