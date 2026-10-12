@@ -106,8 +106,13 @@ async function getProject(req, res) {
         },
         {
           model: Client,
-          attributes: ["id", "nombre"],
           as: "customerData",
+          include: [
+            {
+              model: require("../models/contactClient"),
+              as: "contactos",
+            },
+          ],
         },
         {
           model: MaintenanceReport,
@@ -180,8 +185,13 @@ async function getOneProject(req, res) {
         },
         {
           model: Client,
-          attributes: ["id", "nombre"],
           as: "customerData",
+          include: [
+            {
+              model: require("../models/contactClient"),
+              as: "contactos",
+            },
+          ],
         },
         {
           model: product_proyect,

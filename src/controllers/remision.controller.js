@@ -10,6 +10,7 @@ const ItemProduct = require("../models/item_product");
 const RemisionProduct = require("../models/remision_product");
 const User = require("../models/user");
 const InventoryLog = require("../models/InventoryLog");
+const { base64ToFile } = require("../utils/fileUpload");
 
 const Module = "remision";
 
@@ -17,7 +18,7 @@ async function save(req, res) {
     const t = await sequelize.transaction();
 
     try {
-        let { description, company, fkUser, fk_proyect, net_products, net_items } = req.body;
+        let { description, company, fkUser, fk_proyect, net_products, net_items, customer_signature, customer_name, client_name } = req.body;
 
         // 1. Agrupar duplicados y normalizar entrada
         const normalizedProducts = [];
@@ -108,12 +109,17 @@ async function save(req, res) {
         }
 
         // 4. PERSISTENCIA (Solo si hay stock suficiente para todo)
+        const savedSignature = customer_signature ? base64ToFile(customer_signature, 'signatures') : null;
         const remision = await Remision.create({
             description,
             fkUser,
             company,
             date: new Date(),
-            fk_proyect: fk_proyect || null
+            fk_proyect: fk_proyect || null,
+            client_name: client_name ? client_name.trim() : null,
+            customer_signature: savedSignature,
+            customer_name: customer_name || null,
+            signed_date: savedSignature ? new Date() : null
         }, { transaction: t });
 
         // 4a. Procesar y descontar productos
@@ -457,9 +463,13 @@ async function getAll(req, res) {
             id: r.id,
             date: r.date,
             project: r.proyect?.id ? `Proyecto #${r.proyect.id}` : 'S/N',
-            customer: r.proyect?.customerData?.nombre || 'S/N',
+            customer: r.proyect?.customerData?.nombre || r.client_name || 'S/N',
             description: r.description || 'Sin descripción',
             elaboradoPor: r.user?.name || 'Sistema',
+            customer_signature: r.customer_signature,
+            customer_name: r.customer_name,
+            client_name: r.client_name,
+            signed_date: r.signed_date,
             remisionProducts: r.remisionProducts,
             remisionItems: r.remisionItems,
             proyect: r.proyect // Keep original proyect reference just in case
@@ -478,8 +488,54 @@ async function getAll(req, res) {
     }
 }
 
+async function signRemision(req, res) {
+    try {
+        const { id } = req.params;
+        const { customer_signature, customer_name } = req.body;
+
+        const remision = await Remision.findByPk(id);
+        if (!remision) {
+            return res.status(httpStatus.NOT_FOUND).json({
+                message: "Remisión no encontrada",
+                module: Module
+            });
+        }
+
+        if (!customer_signature) {
+            return res.status(httpStatus.BAD_REQUEST).json({
+                message: "La firma digital de recibido es obligatoria.",
+                module: Module
+            });
+        }
+
+        const savedSignature = customer_signature ? base64ToFile(customer_signature, 'signatures') : remision.customer_signature;
+
+        await remision.update({
+            customer_signature: savedSignature,
+            customer_name: customer_name || remision.customer_name,
+            signed_date: new Date()
+        });
+
+        const updated = await Remision.findByPk(id);
+
+        return res.status(httpStatus.OK).json({
+            message: "Firma de recibido guardada exitosamente",
+            data: updated,
+            module: Module
+        });
+    } catch (error) {
+        console.error("Error al firmar remisión:", error);
+        return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+            message: "Error interno al firmar remisión.",
+            error: error.message,
+            module: Module
+        });
+    }
+}
+
 module.exports = {
     save,
     complete,
-    getAll
+    getAll,
+    signRemision
 };

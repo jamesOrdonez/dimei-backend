@@ -16,6 +16,10 @@ router
         "/completeRemission",
         remisionController.complete,
     )
+    .post(
+        "/signRemision/:id",
+        remisionController.signRemision,
+    )
     .get(
         "/getAll/:company",
         remisionController.getAll,

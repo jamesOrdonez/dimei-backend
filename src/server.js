@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 
+
 const app = express();
 const PORT = process.env.PORT;
 
@@ -22,6 +23,7 @@ app.use(
 
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use("/api/v1/uploads/attendance", express.static(path.join(__dirname, "../uploads/attendance")));
+app.use("/api/v1/uploads/maintenance", express.static(path.join(__dirname, "../uploads/maintenance")));
 app.use("/api/v1/uploads", verifyToken, express.static(path.join(__dirname, "../uploads")));
 app.use("/api/v1/", v1Routes);
 

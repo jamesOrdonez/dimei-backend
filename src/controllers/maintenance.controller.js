@@ -13,6 +13,9 @@ async function saveMaintenanceReport(req, res) {
       customer_signature, 
       technician_signature, 
       customer_name,
+      maintenance_type,
+      recommendations,
+      general_observations,
       answers,
       pdf_base64
     } = req.body;
@@ -24,6 +27,9 @@ async function saveMaintenanceReport(req, res) {
       customer_signature: base64ToFile(customer_signature, 'signatures'),
       technician_signature: base64ToFile(technician_signature, 'signatures'),
       customer_name: customer_name || null,
+      maintenance_type: maintenance_type || 'Preventivo',
+      recommendations: recommendations || [],
+      general_observations: general_observations || '',
       pdf_path: base64ToFile(pdf_base64, 'maintenances'),
       date: new Date()
     });
@@ -50,7 +56,36 @@ async function saveMaintenanceReport(req, res) {
           photos: savedPhotos
         };
       });
-      await MaintenanceAnswer.bulkCreate(answerRecords);
+      try {
+        await MaintenanceAnswer.bulkCreate(answerRecords);
+      } catch (insertError) {
+        if (insertError.name === "SequelizeForeignKeyConstraintError" || insertError.parent?.errno === 1452) {
+          const sequelize = require("../db/conection");
+          try {
+            await sequelize.query("ALTER TABLE maintenance_answer DROP FOREIGN KEY `maintenance_answer_ibfk_2`");
+          } catch (e) {
+            try {
+              const [fkRows] = await sequelize.query(`
+                SELECT CONSTRAINT_NAME 
+                FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'maintenance_answer' 
+                  AND COLUMN_NAME = 'question_id' 
+                  AND REFERENCED_TABLE_NAME = 'question'
+              `);
+              for (const row of fkRows) {
+                if (row.CONSTRAINT_NAME) {
+                  await sequelize.query(`ALTER TABLE maintenance_answer DROP FOREIGN KEY \`${row.CONSTRAINT_NAME}\``);
+                }
+              }
+            } catch (err2) {}
+          }
+          // Reintentar inserción
+          await MaintenanceAnswer.bulkCreate(answerRecords);
+        } else {
+          throw insertError;
+        }
+      }
     }
 
     res.status(httpStatus.CREATED).json({
@@ -68,7 +103,23 @@ async function getMaintenanceReport(req, res) {
     const { id } = req.params;
     const report = await MaintenanceReport.findByPk(id, {
       include: [
-        { model: MaintenanceAnswer, as: "answers" }
+        { model: MaintenanceAnswer, as: "answers" },
+        {
+          model: Proyect,
+          as: "projectData",
+          include: [
+            {
+              model: require("../models/clients"),
+              as: "customerData",
+              include: [
+                { model: require("../models/contactClient"), as: "contactos" }
+              ]
+            },
+            { model: require("../models/elevatorType"), as: "elevatorTypeData" },
+            { model: require("../models/typeDriveSystem"), as: "driveSystemData" }
+          ]
+        },
+        { model: User, as: "technicianData" }
       ]
     });
     
@@ -91,7 +142,13 @@ async function getAllMaintenanceReports(req, res) {
           as: "projectData", 
           where: { company },
           include: [
-            { model: require("../models/clients"), as: "customerData" },
+            {
+              model: require("../models/clients"),
+              as: "customerData",
+              include: [
+                { model: require("../models/contactClient"), as: "contactos" }
+              ]
+            },
             { model: require("../models/elevatorType"), as: "elevatorTypeData" },
             { model: require("../models/typeDriveSystem"), as: "driveSystemData" }
           ]

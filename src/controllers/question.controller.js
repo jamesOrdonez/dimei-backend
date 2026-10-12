@@ -268,6 +268,57 @@ async function reorderQuestions(req, res) {
   }
 }
 
+async function copyQuestion(req, res) {
+  try {
+    const { id } = req.params;
+    const original = await Question.findByPk(id, {
+      include: [{ model: AnswerOption, as: "options" }],
+    });
+
+    if (!original) {
+      return res.status(httpStatus.NOT_FOUND).json({ message: "Pregunta no encontrada", module: Module });
+    }
+
+    const maxOrderQuestion = await Question.findOne({
+      where: { group_id: original.group_id },
+      order: [["order", "DESC"]],
+    });
+    const nextOrder = maxOrderQuestion ? (maxOrderQuestion.order || 0) + 1 : 0;
+
+    const newQuestion = await Question.create({
+      group_id: original.group_id,
+      text: `${original.text} (Copia)`,
+      type: original.type,
+      min_photos: original.min_photos,
+      max_photos: original.max_photos,
+      order: nextOrder,
+    });
+
+    if (original.options && original.options.length > 0) {
+      const newOpts = original.options.map((o) => ({
+        question_id: newQuestion.id,
+        text: o.text,
+        requires_photo: o.requires_photo,
+        requires_justification: o.requires_justification,
+      }));
+      await AnswerOption.bulkCreate(newOpts);
+    }
+
+    const full = await Question.findByPk(newQuestion.id, {
+      include: [{ model: AnswerOption, as: "options", separate: true, order: [["id", "ASC"]] }],
+    });
+
+    res.status(httpStatus.CREATED).json({
+      data: full,
+      module: Module,
+      message: "Pregunta copiada exitosamente",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({ message: error.message, module: Module });
+  }
+}
+
 module.exports = {
   getQuestionGroups,
   getOneQuestionGroup,
@@ -278,6 +329,7 @@ module.exports = {
   saveQuestion,
   updateQuestion,
   deleteQuestion,
+  copyQuestion,
   reorderQuestionGroups,
   reorderQuestions,
 };

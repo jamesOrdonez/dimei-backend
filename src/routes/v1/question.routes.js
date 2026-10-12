@@ -12,6 +12,7 @@ router
   .put("/updateQuestionGroup/:id", protectedRoute(options), ctrl.updateQuestionGroup)
   .delete("/deleteQuestionGroup/:id", protectedRoute(options), ctrl.deleteQuestionGroup)
   .post("/saveQuestion", protectedRoute(options), ctrl.saveQuestion)
+  .post("/copyQuestion/:id", protectedRoute(options), ctrl.copyQuestion)
   .put("/updateQuestion/:id", protectedRoute(options), ctrl.updateQuestion)
   .delete("/deleteQuestion/:id", protectedRoute(options), ctrl.deleteQuestion)
   .post("/reorderQuestionGroups", protectedRoute(options), ctrl.reorderQuestionGroups)
